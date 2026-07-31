@@ -1,0 +1,22 @@
+﻿# dependencias
+node_modules/
+
+# variables de entorno
+.env
+.env.local
+
+# compilados
+dist/
+build/
+
+# registros
+*.log
+npm-debug.log*
+
+# editor y sistema operativo
+.vscode/
+.DS_Store
+Thumbs.db
+
+# respaldos de base de datos
+*.bak
