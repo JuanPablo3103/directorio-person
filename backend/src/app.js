@@ -4,6 +4,8 @@
 const express = require('express');
 const cors = require('cors');
 
+const personasRoutes = require('./routes/personas.routes');
+
 const app = express();
 
 // Permite que el frontend (que corre en otro puerto) consuma esta API.
@@ -21,6 +23,9 @@ app.get('/api/salud', (req, res) => {
   });
 });
 
-// Aquí se irán registrando las rutas de cada recurso.
+// Rutas del recurso "personas": listado, búsqueda y filtro por tipo.
+app.use('/api/personas', personasRoutes);
+
+// Aquí se irán registrando las rutas de los demás recursos.
 
 module.exports = app;
