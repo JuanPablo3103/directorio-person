@@ -4,7 +4,9 @@
 const express = require('express');
 const cors = require('cors');
 
+const authRoutes = require('./routes/auth.routes');
 const personasRoutes = require('./routes/personas.routes');
+const verificarToken = require('./middlewares/auth.middleware');
 
 const app = express();
 
@@ -23,8 +25,14 @@ app.get('/api/salud', (req, res) => {
   });
 });
 
-// Rutas del recurso "personas": listado, búsqueda y filtro por tipo.
-app.use('/api/personas', personasRoutes);
+// Rutas de autenticación: login (pública) y perfil (protegida, ya la
+// protege internamente auth.routes.js con verificarToken).
+app.use('/api/auth', authRoutes);
+
+// Rutas del recurso "personas": listado, búsqueda, filtro por tipo y
+// detalle. Todo el recurso queda protegido: sin token válido no se
+// puede consultar el directorio.
+app.use('/api/personas', verificarToken, personasRoutes);
 
 // Aquí se irán registrando las rutas de los demás recursos.
 
