@@ -93,4 +93,99 @@ async function listarPersonas(parametrosCrudos) {
   };
 }
 
-module.exports = { listarPersonas };
+// Obtiene el detalle completo de una persona: datos básicos más sus correos,
+// teléfonos y direcciones. Se asume que "id" ya llegó validado como entero
+// positivo (esa validación de formato vive en el controlador).
+// Devuelve null si no existe ninguna persona con ese BusinessEntityID.
+async function obtenerPersonaPorId(id) {
+  const pool = await obtenerPool();
+
+  // 1) Datos básicos. Si no hay resultado, la persona no existe y no vale
+  // la pena disparar las demás consultas.
+  const resultadoPersona = await pool.request()
+    .input('id', sql.Int, id)
+    .query(`
+      SELECT
+        BusinessEntityID,
+        PersonType,
+        Title,
+        FirstName,
+        MiddleName,
+        LastName,
+        Suffix,
+        EmailPromotion,
+        LTRIM(RTRIM(
+          FirstName + ISNULL(' ' + MiddleName, '') + ' ' + LastName
+        )) AS nombreCompleto
+      FROM Person.Person
+      WHERE BusinessEntityID = @id;
+    `);
+
+  const persona = resultadoPersona.recordset[0];
+  if (!persona) {
+    return null;
+  }
+
+  // 2) Correos: relación uno a muchos directa con Person.EmailAddress.
+  const resultadoCorreos = await pool.request()
+    .input('id', sql.Int, id)
+    .query(`
+      SELECT EmailAddressID, EmailAddress
+      FROM Person.EmailAddress
+      WHERE BusinessEntityID = @id
+      ORDER BY EmailAddressID;
+    `);
+
+  // 3) Teléfonos: se junta con PhoneNumberType solo para traer el nombre
+  // legible del tipo (ej. "Cell", "Home"), sin duplicar teléfonos.
+  const resultadoTelefonos = await pool.request()
+    .input('id', sql.Int, id)
+    .query(`
+      SELECT
+        pp.PhoneNumber,
+        pp.PhoneNumberTypeID,
+        pnt.Name AS tipoTelefono
+      FROM Person.PersonPhone AS pp
+      INNER JOIN Person.PhoneNumberType AS pnt
+        ON pnt.PhoneNumberTypeID = pp.PhoneNumberTypeID
+      WHERE pp.BusinessEntityID = @id
+      ORDER BY pp.PhoneNumberTypeID;
+    `);
+
+  // 4) Direcciones: BusinessEntityAddress es la tabla puente hacia Address;
+  // desde ahí se resuelve el tipo de dirección, el estado/provincia y el país.
+  // Cada join es "uno a uno" respecto a la dirección, así que no duplica filas.
+  const resultadoDirecciones = await pool.request()
+    .input('id', sql.Int, id)
+    .query(`
+      SELECT
+        a.AddressID,
+        addrType.Name AS tipoDireccion,
+        a.AddressLine1,
+        a.AddressLine2,
+        a.City,
+        sp.Name AS estadoProvincia,
+        cr.Name AS pais,
+        a.PostalCode
+      FROM Person.BusinessEntityAddress AS bea
+      INNER JOIN Person.Address AS a
+        ON a.AddressID = bea.AddressID
+      INNER JOIN Person.AddressType AS addrType
+        ON addrType.AddressTypeID = bea.AddressTypeID
+      INNER JOIN Person.StateProvince AS sp
+        ON sp.StateProvinceID = a.StateProvinceID
+      INNER JOIN Person.CountryRegion AS cr
+        ON cr.CountryRegionCode = sp.CountryRegionCode
+      WHERE bea.BusinessEntityID = @id
+      ORDER BY a.AddressID;
+    `);
+
+  return {
+    ...persona,
+    correos: resultadoCorreos.recordset,
+    telefonos: resultadoTelefonos.recordset,
+    direcciones: resultadoDirecciones.recordset
+  };
+}
+
+module.exports = { listarPersonas, obtenerPersonaPorId };
