@@ -1,39 +1,36 @@
 // Controlador de autenticación.
-// Lee la petición, delega en el servicio y traduce el resultado a HTTP.
-// No conoce bcrypt ni JWT: eso es responsabilidad exclusiva del servicio.
+// Lee la petición, delega en el servicio y devuelve la respuesta exitosa.
+// No conoce bcrypt ni JWT (eso es del servicio) ni construye respuestas
+// de error (eso es del middleware manejadorErrores).
 
 const authService = require('../services/auth.service');
+const { solicitudInvalida, noAutorizado } = require('../utils/errores');
 
 // POST /api/auth/login
-async function iniciarSesion(req, res) {
-  const { nombreUsuario, contrasena } = req.body;
+async function iniciarSesion(req, res, next) {
+  const { nombreUsuario, contrasena } = req.body ?? {};
 
   const nombreUsuarioValido = typeof nombreUsuario === 'string' && nombreUsuario.trim() !== '';
   const contrasenaValida = typeof contrasena === 'string' && contrasena.trim() !== '';
 
   if (!nombreUsuarioValido || !contrasenaValida) {
-    return res.status(400).json({
-      mensaje: 'Debe indicar nombreUsuario y contrasena.'
-    });
+    return next(solicitudInvalida('Debe indicar nombreUsuario y contrasena.'));
   }
 
   try {
     const usuario = await authService.validarCredenciales(nombreUsuario.trim(), contrasena);
 
     if (!usuario) {
-      return res.status(401).json({
-        mensaje: 'Usuario o contrasena incorrectos.'
-      });
+      // Mensaje genérico a propósito: no debe revelar si el usuario
+      // existe o si lo que falló fue la contraseña.
+      return next(noAutorizado('Usuario o contrasena incorrectos.'));
     }
 
     const token = authService.generarToken(usuario);
 
     res.status(200).json({ token, usuario });
   } catch (error) {
-    console.error('Error al iniciar sesión:', error);
-    res.status(500).json({
-      mensaje: 'Ocurrió un error al iniciar sesión.'
-    });
+    next(error);
   }
 }
 
