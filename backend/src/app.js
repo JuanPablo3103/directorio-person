@@ -7,6 +7,7 @@ const cors = require('cors');
 const authRoutes = require('./routes/auth.routes');
 const personasRoutes = require('./routes/personas.routes');
 const verificarToken = require('./middlewares/auth.middleware');
+const { rutaNoEncontrada, manejadorErrores } = require('./middlewares/error.middleware');
 
 const app = express();
 
@@ -35,5 +36,13 @@ app.use('/api/auth', authRoutes);
 app.use('/api/personas', verificarToken, personasRoutes);
 
 // Aquí se irán registrando las rutas de los demás recursos.
+
+// Ninguna ruta coincidió con la petición: responde 404 en JSON.
+// Debe ir después de todas las rutas.
+app.use(rutaNoEncontrada);
+
+// Manejo uniforme de errores. Debe ser el último middleware registrado,
+// para que reciba los errores de todos los anteriores.
+app.use(manejadorErrores);
 
 module.exports = app;
