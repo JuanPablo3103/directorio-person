@@ -6,6 +6,7 @@ const cors = require('cors');
 
 const authRoutes = require('./routes/auth.routes');
 const personasRoutes = require('./routes/personas.routes');
+const catalogosRoutes = require('./routes/catalogos.routes');
 const verificarToken = require('./middlewares/auth.middleware');
 const { rutaNoEncontrada, manejadorErrores } = require('./middlewares/error.middleware');
 
@@ -34,6 +35,11 @@ app.use('/api/auth', authRoutes);
 // detalle. Todo el recurso queda protegido: sin token válido no se
 // puede consultar el directorio.
 app.use('/api/personas', verificarToken, personasRoutes);
+
+// Catálogos de solo lectura (tipos de teléfono y de dirección, países y
+// estados). Protegidos igual que personas: alimentan los selectores del
+// frontend, que solo se usan con sesión iniciada.
+app.use('/api/catalogos', verificarToken, catalogosRoutes);
 
 // Aquí se irán registrando las rutas de los demás recursos.
 
