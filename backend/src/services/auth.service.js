@@ -1,7 +1,7 @@
 // Reglas de negocio de autenticación: validar credenciales contra
 // dbo.UsuarioAplicacion y emitir el JWT de sesión.
 
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { obtenerPool, sql } = require('../config/db');
 

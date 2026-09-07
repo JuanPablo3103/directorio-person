@@ -7,7 +7,7 @@
 //   node scripts/crear-usuario.js admin "Secreta#2026" "Administrador del Sistema"
 
 require('dotenv').config();
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const { obtenerPool, sql } = require('../src/config/db');
 
 const COSTO_HASH = 10;
