@@ -8,6 +8,7 @@ import RutaProtegida from './components/RutaProtegida';
 import Login from './pages/Login';
 import ListadoPersonas from './pages/ListadoPersonas';
 import DetallePersona from './pages/DetallePersona';
+import RegistrarPersona from './pages/RegistrarPersona';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
               así que ambas exigen sesión activa sin repetir la validación */}
           <Route element={<RutaProtegida />}>
             <Route path="/" element={<ListadoPersonas />} />
+            <Route path="/personas/nueva" element={<RegistrarPersona />} />
             <Route path="/personas/:id" element={<DetallePersona />} />
           </Route>
         </Routes>

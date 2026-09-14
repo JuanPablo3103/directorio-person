@@ -91,26 +91,36 @@ function ListadoPersonas() {
       <Encabezado />
 
       <main className="mx-auto max-w-5xl px-4 py-6">
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <input
-            type="text"
-            value={buscarInput}
-            onChange={(evento) => setBuscarInput(evento.target.value)}
-            placeholder="Buscar por nombre o apellido..."
-            className="w-full max-w-xs rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
-          />
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <input
+              type="text"
+              value={buscarInput}
+              onChange={(evento) => setBuscarInput(evento.target.value)}
+              placeholder="Buscar por nombre o apellido..."
+              className="w-full max-w-xs rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+            />
 
-          <select
-            value={tipo}
-            onChange={manejarCambioTipo}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+            <select
+              value={tipo}
+              onChange={manejarCambioTipo}
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+            >
+              {OPCIONES_TIPO.map((opcion) => (
+                <option key={opcion.valor} value={opcion.valor}>
+                  {opcion.etiqueta}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => navigate('/personas/nueva')}
+            className="rounded-md bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
           >
-            {OPCIONES_TIPO.map((opcion) => (
-              <option key={opcion.valor} value={opcion.valor}>
-                {opcion.etiqueta}
-              </option>
-            ))}
-          </select>
+            Registrar persona
+          </button>
         </div>
 
         <div className="overflow-x-auto rounded-lg bg-white shadow-md">
