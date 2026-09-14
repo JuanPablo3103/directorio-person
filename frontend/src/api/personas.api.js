@@ -31,3 +31,12 @@ export async function crearPersona(datosPersona) {
   const respuesta = await clienteApi.post('/personas', datosPersona);
   return respuesta.data;
 }
+
+// PUT /api/personas/:id -> actualiza los datos de una persona existente.
+// Mismo formato de datosPersona que crearPersona. Los errores (400 de
+// validación, 404 si no existe) llegan tal cual en error.response.data,
+// igual que en crearPersona.
+export async function actualizarPersona(id, datosPersona) {
+  const respuesta = await clienteApi.put(`/personas/${id}`, datosPersona);
+  return respuesta.data;
+}

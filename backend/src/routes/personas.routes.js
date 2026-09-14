@@ -12,10 +12,12 @@ const router = express.Router();
 // IN=Individual (cliente), VC=Contacto de proveedor, GC=Contacto general.
 const TIPOS_PERSONA_VALIDOS = ['EM', 'SP', 'SC', 'IN', 'VC', 'GC'];
 
-// Reglas de validación para POST /api/personas.
-// Corren como middleware antes del controlador; si alguna falla, el
-// controlador las recoge con validationResult y responde 400.
-const validacionesCrearPersona = [
+// Reglas de validación de los campos de persona, compartidas entre
+// POST /api/personas y PUT /api/personas/:id (mismas reglas de negocio
+// para crear y para modificar). Corren como middleware antes del
+// controlador; si alguna falla, el controlador las recoge con
+// validationResult y responde 400.
+const validacionesDatosPersona = [
   body('personType')
     .trim()
     .notEmpty().withMessage('El tipo de persona (personType) es obligatorio.')
@@ -60,6 +62,9 @@ router.get('/', personasController.listarPersonas);
 router.get('/:id', personasController.obtenerPersonaPorId);
 
 // POST /api/personas -> registra una persona nueva (BusinessEntity + Person en una transacción)
-router.post('/', validacionesCrearPersona, personasController.crearPersona);
+router.post('/', validacionesDatosPersona, personasController.crearPersona);
+
+// PUT /api/personas/:id -> actualiza los datos de una persona existente
+router.put('/:id', validacionesDatosPersona, personasController.actualizarPersona);
 
 module.exports = router;

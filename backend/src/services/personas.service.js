@@ -264,4 +264,62 @@ async function crearPersona(datosPersona) {
   }
 }
 
-module.exports = { listarPersonas, obtenerPersonaPorId, crearPersona };
+// Actualiza los datos de una persona existente en Person.Person.
+// No requiere transacción porque toca una sola tabla. Devuelve el objeto
+// actualizado, o null si no existe ninguna persona con ese id (0 filas
+// afectadas por el UPDATE) para que el controlador responda 404.
+// id ya llega validado como entero positivo; datosPersona, validado por
+// express-validator (mismas reglas que crearPersona).
+async function actualizarPersona(id, datosPersona) {
+  const {
+    personType,
+    title = null,
+    firstName,
+    middleName = null,
+    lastName,
+    suffix = null,
+    emailPromotion = 0
+  } = datosPersona;
+
+  const pool = await obtenerPool();
+
+  const resultado = await pool.request()
+    .input('id', sql.Int, id)
+    .input('personType', sql.NChar(2), personType)
+    .input('title', sql.NVarChar(8), title)
+    .input('firstName', sql.NVarChar(50), firstName)
+    .input('middleName', sql.NVarChar(50), middleName)
+    .input('lastName', sql.NVarChar(50), lastName)
+    .input('suffix', sql.NVarChar(10), suffix)
+    .input('emailPromotion', sql.Int, emailPromotion)
+    .query(`
+      UPDATE Person.Person
+      SET
+        PersonType = @personType,
+        Title = @title,
+        FirstName = @firstName,
+        MiddleName = @middleName,
+        LastName = @lastName,
+        Suffix = @suffix,
+        EmailPromotion = @emailPromotion,
+        ModifiedDate = GETDATE()
+      WHERE BusinessEntityID = @id;
+    `);
+
+  if (resultado.rowsAffected[0] === 0) {
+    return null;
+  }
+
+  return {
+    BusinessEntityID: id,
+    PersonType: personType,
+    Title: title,
+    FirstName: firstName,
+    MiddleName: middleName,
+    LastName: lastName,
+    Suffix: suffix,
+    EmailPromotion: emailPromotion
+  };
+}
+
+module.exports = { listarPersonas, obtenerPersonaPorId, crearPersona, actualizarPersona };
