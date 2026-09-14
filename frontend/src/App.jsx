@@ -9,6 +9,7 @@ import Login from './pages/Login';
 import ListadoPersonas from './pages/ListadoPersonas';
 import DetallePersona from './pages/DetallePersona';
 import RegistrarPersona from './pages/RegistrarPersona';
+import EditarPersona from './pages/EditarPersona';
 
 function App() {
   return (
@@ -24,6 +25,7 @@ function App() {
             <Route path="/" element={<ListadoPersonas />} />
             <Route path="/personas/nueva" element={<RegistrarPersona />} />
             <Route path="/personas/:id" element={<DetallePersona />} />
+            <Route path="/personas/:id/editar" element={<EditarPersona />} />
           </Route>
         </Routes>
       </AuthProvider>

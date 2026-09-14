@@ -66,4 +66,43 @@ async function crearPersona(req, res, next) {
   }
 }
 
-module.exports = { listarPersonas, obtenerPersonaPorId, crearPersona };
+// PUT /api/personas/:id
+// Reutiliza el mismo patrón de validación de id que obtenerPersonaPorId,
+// más las reglas de body de express-validator (las mismas que crearPersona).
+async function actualizarPersona(req, res, next) {
+  const idCrudo = req.params.id;
+
+  if (!PATRON_ENTERO_POSITIVO.test(idCrudo)) {
+    return next(
+      solicitudInvalida('El identificador de la persona debe ser un número entero positivo.')
+    );
+  }
+
+  const errores = validationResult(req);
+
+  if (!errores.isEmpty()) {
+    const mensaje = errores.array().map((error) => error.msg).join(' ');
+    return next(solicitudInvalida(mensaje));
+  }
+
+  const id = Number(idCrudo);
+
+  try {
+    const personaActualizada = await personasService.actualizarPersona(id, req.body);
+
+    if (!personaActualizada) {
+      return next(noEncontrado(`No se encontró ninguna persona con el identificador ${id}.`));
+    }
+
+    res.status(200).json(personaActualizada);
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = {
+  listarPersonas,
+  obtenerPersonaPorId,
+  crearPersona,
+  actualizarPersona
+};
