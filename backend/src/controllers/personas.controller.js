@@ -4,6 +4,7 @@
 // middleware manejadorErrores con next(error); este controlador no
 // construye respuestas de error.
 
+const { validationResult } = require('express-validator');
 const personasService = require('../services/personas.service');
 const { solicitudInvalida, noEncontrado } = require('../utils/errores');
 
@@ -46,4 +47,23 @@ async function obtenerPersonaPorId(req, res, next) {
   }
 }
 
-module.exports = { listarPersonas, obtenerPersonaPorId };
+// POST /api/personas
+// Las reglas de validación (personType, firstName, etc.) corren antes como
+// middleware en la ruta; acá solo se revisa si quedó algún error.
+async function crearPersona(req, res, next) {
+  const errores = validationResult(req);
+
+  if (!errores.isEmpty()) {
+    const mensaje = errores.array().map((error) => error.msg).join(' ');
+    return next(solicitudInvalida(mensaje));
+  }
+
+  try {
+    const personaCreada = await personasService.crearPersona(req.body);
+    res.status(201).json(personaCreada);
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = { listarPersonas, obtenerPersonaPorId, crearPersona };

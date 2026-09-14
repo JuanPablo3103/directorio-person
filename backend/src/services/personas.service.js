@@ -188,4 +188,80 @@ async function obtenerPersonaPorId(id) {
   };
 }
 
-module.exports = { listarPersonas, obtenerPersonaPorId };
+// Crea una persona nueva: primero da de alta la entidad de negocio en
+// Person.BusinessEntity (tabla padre, de la que cuelgan Person, Address, etc.)
+// y con el BusinessEntityID generado inserta el detalle en Person.Person.
+// Ambos inserts van en una sola transacción: si el segundo falla, el primero
+// también se revierte y no queda una BusinessEntity "huérfana".
+// datosPersona ya llega validado desde el controlador (express-validator).
+async function crearPersona(datosPersona) {
+  const {
+    personType,
+    title = null,
+    firstName,
+    middleName = null,
+    lastName,
+    suffix = null,
+    emailPromotion = 0
+  } = datosPersona;
+
+  const pool = await obtenerPool();
+  const transaction = new sql.Transaction(pool);
+
+  try {
+    await transaction.begin();
+
+    // 1) Person.BusinessEntity: el ID lo genera SQL Server (identity),
+    // por eso se recupera con OUTPUT en el mismo INSERT.
+    const resultadoEntidad = await new sql.Request(transaction)
+      .query(`
+        INSERT INTO Person.BusinessEntity (rowguid, ModifiedDate)
+        OUTPUT INSERTED.BusinessEntityID
+        VALUES (NEWID(), GETDATE());
+      `);
+
+    const businessEntityId = resultadoEntidad.recordset[0].BusinessEntityID;
+
+    // 2) Person.Person: usa el ID recién generado como clave primaria.
+    await new sql.Request(transaction)
+      .input('businessEntityId', sql.Int, businessEntityId)
+      .input('personType', sql.NChar(2), personType)
+      .input('title', sql.NVarChar(8), title)
+      .input('firstName', sql.NVarChar(50), firstName)
+      .input('middleName', sql.NVarChar(50), middleName)
+      .input('lastName', sql.NVarChar(50), lastName)
+      .input('suffix', sql.NVarChar(10), suffix)
+      .input('emailPromotion', sql.Int, emailPromotion)
+      .query(`
+        INSERT INTO Person.Person (
+          BusinessEntityID, PersonType, NameStyle, Title,
+          FirstName, MiddleName, LastName, Suffix,
+          EmailPromotion, rowguid, ModifiedDate
+        )
+        VALUES (
+          @businessEntityId, @personType, 0, @title,
+          @firstName, @middleName, @lastName, @suffix,
+          @emailPromotion, NEWID(), GETDATE()
+        );
+      `);
+
+    await transaction.commit();
+
+    return {
+      BusinessEntityID: businessEntityId,
+      PersonType: personType,
+      Title: title,
+      FirstName: firstName,
+      MiddleName: middleName,
+      LastName: lastName,
+      Suffix: suffix,
+      EmailPromotion: emailPromotion
+    };
+  } catch (error) {
+    // Revierte ambos inserts si cualquiera de los dos falló.
+    await transaction.rollback();
+    throw error;
+  }
+}
+
+module.exports = { listarPersonas, obtenerPersonaPorId, crearPersona };

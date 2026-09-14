@@ -21,3 +21,13 @@ export async function obtenerPersonaPorId(id) {
   const respuesta = await clienteApi.get(`/personas/${id}`);
   return respuesta.data;
 }
+
+// POST /api/personas -> registra una persona nueva.
+// datosPersona: { personType, title, firstName, middleName, lastName,
+// suffix, emailPromotion }. Los errores de validación (400) llegan tal
+// cual del backend en error.response.data; los deja pasar sin capturar
+// para que el formulario decida cómo mostrarlos.
+export async function crearPersona(datosPersona) {
+  const respuesta = await clienteApi.post('/personas', datosPersona);
+  return respuesta.data;
+}
