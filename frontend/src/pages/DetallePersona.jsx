@@ -2,18 +2,22 @@
 // básicos, correos, teléfonos y direcciones.
 
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { obtenerPersonaPorId } from '../api/personas.api';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { obtenerPersonaPorId, eliminarPersona } from '../api/personas.api';
 import { ETIQUETAS_TIPO } from '../constants/tiposPersona';
 import Encabezado from '../components/Encabezado';
 
 function DetallePersona() {
   const { id } = useParams();
+  const navigate = useNavigate();
 
   const [persona, setPersona] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [noEncontrada, setNoEncontrada] = useState(false);
   const [error, setError] = useState('');
+
+  const [eliminando, setEliminando] = useState(false);
+  const [errorEliminar, setErrorEliminar] = useState('');
 
   // Se vuelve a cargar cada vez que cambia el id de la URL (por ejemplo,
   // si el usuario navega de un detalle a otro sin pasar por el listado).
@@ -52,6 +56,45 @@ function DetallePersona() {
     };
   }, [id]);
 
+  async function manejarEliminar() {
+    const confirmado = window.confirm(
+      `¿Eliminar a ${persona.nombreCompleto}? Esta acción no se puede deshacer.`
+    );
+
+    if (!confirmado) {
+      return;
+    }
+
+    setErrorEliminar('');
+    setEliminando(true);
+
+    try {
+      await eliminarPersona(id);
+      navigate('/', { replace: true });
+    } catch (errorPeticion) {
+      if (errorPeticion.response?.status === 404) {
+        // Ya no existe (por ejemplo, la borraron desde otra sesión):
+        // el resultado que el usuario espera es el mismo que si hubiera
+        // tenido éxito, así que se navega igual al listado.
+        navigate('/', { replace: true });
+        return;
+      }
+
+      if (errorPeticion.response?.status === 409) {
+        setErrorEliminar(
+          errorPeticion.response.data?.mensaje ??
+            'No se puede eliminar esta persona porque tiene registros asociados en otras áreas del sistema.'
+        );
+      } else if (!errorPeticion.response) {
+        setErrorEliminar('No se pudo conectar con el servidor. Intenta más tarde.');
+      } else {
+        setErrorEliminar('Ocurrió un error inesperado al eliminar la persona. Intenta nuevamente.');
+      }
+
+      setEliminando(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-100">
       <Encabezado />
@@ -64,14 +107,33 @@ function DetallePersona() {
           </Link>
 
           {!cargando && !noEncontrada && !error && persona && (
-            <Link
-              to={`/personas/${id}/editar`}
-              className="rounded-md bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
-            >
-              Editar
-            </Link>
+            <div className="flex gap-2">
+              <Link
+                to={`/personas/${id}/editar`}
+                className="rounded-md bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+              >
+                Editar
+              </Link>
+              <button
+                type="button"
+                onClick={manejarEliminar}
+                disabled={eliminando}
+                className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {eliminando ? 'Eliminando...' : 'Eliminar'}
+              </button>
+            </div>
           )}
         </div>
+
+        {errorEliminar && (
+          <p
+            className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700"
+            role="alert"
+          >
+            {errorEliminar}
+          </p>
+        )}
 
         {cargando && (
           <div className="mt-6 rounded-lg bg-white p-8 text-center text-gray-500 shadow-md">

@@ -67,4 +67,8 @@ router.post('/', validacionesDatosPersona, personasController.crearPersona);
 // PUT /api/personas/:id -> actualiza los datos de una persona existente
 router.put('/:id', validacionesDatosPersona, personasController.actualizarPersona);
 
+// DELETE /api/personas/:id -> elimina una persona (y sus correos, teléfonos
+// y vínculos de dirección dentro del schema Person, en una transacción)
+router.delete('/:id', personasController.eliminarPersona);
+
 module.exports = router;

@@ -40,3 +40,11 @@ export async function actualizarPersona(id, datosPersona) {
   const respuesta = await clienteApi.put(`/personas/${id}`, datosPersona);
   return respuesta.data;
 }
+
+// DELETE /api/personas/:id -> elimina una persona. Un 409 significa que
+// tiene registros asociados en otros schemas (Sales, HumanResources, etc.);
+// se deja pasar en error.response.data.mensaje para que la pantalla lo muestre.
+export async function eliminarPersona(id) {
+  const respuesta = await clienteApi.delete(`/personas/${id}`);
+  return respuesta.data;
+}
