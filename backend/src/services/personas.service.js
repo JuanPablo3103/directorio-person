@@ -20,10 +20,13 @@ function obtenerNumeroErrorSql(error) {
 
 // Condición WHERE compartida entre el conteo y la consulta de datos,
 // para garantizar que ambas consultas filtren exactamente lo mismo.
+// La búsqueda compara contra el nombre completo concatenado (mismo criterio
+// que la columna nombreCompleto del SELECT), no contra FirstName/LastName
+// por separado, para que "Maria N" encuentre a "Maria Nelly Gonzalez".
 const FILTRO_WHERE = `
   WHERE (@buscar IS NULL
-      OR p.FirstName COLLATE Latin1_General_CI_AI LIKE @buscar COLLATE Latin1_General_CI_AI
-      OR p.LastName COLLATE Latin1_General_CI_AI LIKE @buscar COLLATE Latin1_General_CI_AI)
+      OR (p.FirstName + ISNULL(' ' + p.MiddleName, '') + ' ' + p.LastName)
+         COLLATE Latin1_General_CI_AI LIKE @buscar COLLATE Latin1_General_CI_AI)
     AND (@tipo IS NULL OR p.PersonType = @tipo)
 `;
 
