@@ -100,9 +100,35 @@ async function actualizarPersona(req, res, next) {
   }
 }
 
+// DELETE /api/personas/:id
+async function eliminarPersona(req, res, next) {
+  const idCrudo = req.params.id;
+
+  if (!PATRON_ENTERO_POSITIVO.test(idCrudo)) {
+    return next(
+      solicitudInvalida('El identificador de la persona debe ser un número entero positivo.')
+    );
+  }
+
+  const id = Number(idCrudo);
+
+  try {
+    const eliminada = await personasService.eliminarPersona(id);
+
+    if (!eliminada) {
+      return next(noEncontrado(`No se encontró ninguna persona con el identificador ${id}.`));
+    }
+
+    res.status(200).json({ mensaje: `La persona ${id} se eliminó correctamente.` });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   listarPersonas,
   obtenerPersonaPorId,
   crearPersona,
-  actualizarPersona
+  actualizarPersona,
+  eliminarPersona
 };

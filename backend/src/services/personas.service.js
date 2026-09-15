@@ -4,6 +4,19 @@
 
 const { obtenerPool, sql } = require('../config/db');
 const { resolverPaginacion, calcularTotalPaginas } = require('../utils/pagination');
+const { conflicto } = require('../utils/errores');
+
+// Código de error de SQL Server para violación de llave foránea: significa
+// que la persona todavía tiene filas relacionadas en otras tablas (por
+// ejemplo Sales.Customer o HumanResources.Employee) que no se están
+// borrando acá.
+const CODIGO_SQL_LLAVE_FORANEA = 547;
+
+// El driver mssql expone el número de error de SQL Server en distintos
+// lugares según cómo se haya propagado.
+function obtenerNumeroErrorSql(error) {
+  return error?.number ?? error?.originalError?.info?.number ?? null;
+}
 
 // Condición WHERE compartida entre el conteo y la consulta de datos,
 // para garantizar que ambas consultas filtren exactamente lo mismo.
@@ -322,4 +335,79 @@ async function actualizarPersona(id, datosPersona) {
   };
 }
 
-module.exports = { listarPersonas, obtenerPersonaPorId, crearPersona, actualizarPersona };
+// Elimina una persona y todo lo que cuelga directamente de ella dentro del
+// schema Person (correos, teléfonos, direcciones), en el orden exacto que
+// exige la integridad referencial: primero las tablas hijas, después
+// Person.Person y por último Person.BusinessEntity (la tabla padre).
+// Devuelve false si el id no existe (el controlador responde 404 sin
+// llegar a abrir una transacción); true si se eliminó con éxito.
+// Si la persona tiene registros en otros schemas (Sales, HumanResources,
+// etc.) el motor rechaza el DELETE de Person.Person o BusinessEntity con
+// el error 547, que acá se traduce a un conflicto 409 con un mensaje claro.
+async function eliminarPersona(id) {
+  const pool = await obtenerPool();
+
+  // Verifica existencia antes de abrir la transacción: no tiene sentido
+  // reservar una conexión y arrancar un BEGIN TRANSACTION para un id que
+  // no está.
+  const resultadoExistencia = await pool.request()
+    .input('id', sql.Int, id)
+    .query('SELECT 1 AS existe FROM Person.Person WHERE BusinessEntityID = @id;');
+
+  if (resultadoExistencia.recordset.length === 0) {
+    return false;
+  }
+
+  const transaction = new sql.Transaction(pool);
+
+  try {
+    await transaction.begin();
+
+    // 1) Correos
+    await new sql.Request(transaction)
+      .input('id', sql.Int, id)
+      .query('DELETE FROM Person.EmailAddress WHERE BusinessEntityID = @id;');
+
+    // 2) Teléfonos
+    await new sql.Request(transaction)
+      .input('id', sql.Int, id)
+      .query('DELETE FROM Person.PersonPhone WHERE BusinessEntityID = @id;');
+
+    // 3) Relación con direcciones (la dirección en sí, Person.Address, no
+    // se borra: puede estar compartida con otras personas o entidades).
+    await new sql.Request(transaction)
+      .input('id', sql.Int, id)
+      .query('DELETE FROM Person.BusinessEntityAddress WHERE BusinessEntityID = @id;');
+
+    // 4) Persona
+    await new sql.Request(transaction)
+      .input('id', sql.Int, id)
+      .query('DELETE FROM Person.Person WHERE BusinessEntityID = @id;');
+
+    // 5) Entidad de negocio (tabla padre)
+    await new sql.Request(transaction)
+      .input('id', sql.Int, id)
+      .query('DELETE FROM Person.BusinessEntity WHERE BusinessEntityID = @id;');
+
+    await transaction.commit();
+    return true;
+  } catch (error) {
+    await transaction.rollback();
+
+    if (obtenerNumeroErrorSql(error) === CODIGO_SQL_LLAVE_FORANEA) {
+      throw conflicto(
+        'No se puede eliminar esta persona porque tiene registros asociados en otras áreas del sistema'
+      );
+    }
+
+    throw error;
+  }
+}
+
+module.exports = {
+  listarPersonas,
+  obtenerPersonaPorId,
+  crearPersona,
+  actualizarPersona,
+  eliminarPersona
+};
