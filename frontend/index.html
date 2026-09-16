@@ -4,7 +4,19 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>frontend</title>
+    <title>Directorio Person · Adventure Works</title>
+    <script>
+      // Decide la clase "dark" antes del primer pintado, para que no haya
+      // un parpadeo del tema incorrecto mientras carga React. La lógica de
+      // qué prefiere la persona vive solo acá: ThemeContext.jsx, al montar,
+      // simplemente lee la clase que este script ya dejó puesta.
+      (function aplicarTemaInicial() {
+        var guardado = localStorage.getItem('tema');
+        var prefiereOscuro = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var oscuro = guardado ? guardado === 'oscuro' : prefiereOscuro;
+        document.documentElement.classList.toggle('dark', oscuro);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
