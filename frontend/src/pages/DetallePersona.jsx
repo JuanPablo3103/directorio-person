@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { obtenerPersonaPorId, eliminarPersona } from '../api/personas.api';
+import clienteApi from '../api/client';
 import { ETIQUETAS_TIPO } from '../constants/tiposPersona';
 import Encabezado from '../components/Encabezado';
 
@@ -18,6 +19,18 @@ function DetallePersona() {
 
   const [eliminando, setEliminando] = useState(false);
   const [errorEliminar, setErrorEliminar] = useState('');
+
+  // Correos electrónicos: se manejan aparte de "persona" porque HU-08
+  // los agrega/elimina en vivo, sin recargar el detalle completo.
+  const [correos, setCorreos] = useState([]);
+  const [cargandoCorreos, setCargandoCorreos] = useState(true);
+  const [errorCorreos, setErrorCorreos] = useState('');
+
+  const [nuevoCorreo, setNuevoCorreo] = useState('');
+  const [agregandoCorreo, setAgregandoCorreo] = useState(false);
+  const [errorAgregarCorreo, setErrorAgregarCorreo] = useState('');
+
+  const [eliminandoCorreoId, setEliminandoCorreoId] = useState(null);
 
   // Se vuelve a cargar cada vez que cambia el id de la URL (por ejemplo,
   // si el usuario navega de un detalle a otro sin pasar por el listado).
@@ -55,6 +68,87 @@ function DetallePersona() {
       cancelado = true;
     };
   }, [id]);
+
+  // Carga los correos por separado, contra el endpoint propio de HU-08
+  // (GET /api/personas/:id/correos), no desde el detalle embebido.
+  useEffect(() => {
+    let cancelado = false;
+
+    async function cargarCorreos() {
+      setCargandoCorreos(true);
+      setErrorCorreos('');
+
+      try {
+        const respuesta = await clienteApi.get(`/personas/${id}/correos`);
+        if (!cancelado) {
+          setCorreos(respuesta.data);
+        }
+      } catch {
+        if (!cancelado) {
+          setErrorCorreos('No se pudieron cargar los correos. Intenta nuevamente.');
+        }
+      } finally {
+        if (!cancelado) {
+          setCargandoCorreos(false);
+        }
+      }
+    }
+
+    cargarCorreos();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [id]);
+
+  async function manejarAgregarCorreo(evento) {
+    evento.preventDefault();
+    setErrorAgregarCorreo('');
+    setAgregandoCorreo(true);
+
+    try {
+      const respuesta = await clienteApi.post(`/personas/${id}/correos`, {
+        correo: nuevoCorreo.trim()
+      });
+
+      setCorreos((correosActuales) => [...correosActuales, respuesta.data]);
+      setNuevoCorreo('');
+    } catch (errorPeticion) {
+      if (errorPeticion.response?.status === 400 || errorPeticion.response?.status === 409) {
+        setErrorAgregarCorreo(
+          errorPeticion.response.data?.mensaje ?? 'No se pudo agregar el correo.'
+        );
+      } else if (!errorPeticion.response) {
+        setErrorAgregarCorreo('No se pudo conectar con el servidor. Intenta más tarde.');
+      } else {
+        setErrorAgregarCorreo('Ocurrió un error inesperado al agregar el correo.');
+      }
+    } finally {
+      setAgregandoCorreo(false);
+    }
+  }
+
+  async function manejarEliminarCorreo(correo) {
+    const confirmado = window.confirm('¿Eliminar este correo?');
+
+    if (!confirmado) {
+      return;
+    }
+
+    setErrorCorreos('');
+    setEliminandoCorreoId(correo.emailAddressId);
+
+    try {
+      await clienteApi.delete(`/personas/${id}/correos/${correo.emailAddressId}`);
+      setCorreos((correosActuales) =>
+        correosActuales.filter((c) => c.emailAddressId !== correo.emailAddressId)
+      );
+    } catch {
+      setErrorCorreos('No se pudo eliminar el correo. Intenta nuevamente.');
+    } finally {
+      setEliminandoCorreoId(null);
+    }
+  }
 
   async function manejarEliminar() {
     const confirmado = window.confirm(
@@ -190,14 +284,61 @@ function DetallePersona() {
               <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
                 Correos electrónicos
               </h3>
-              {persona.correos.length === 0 ? (
-                <p className="mt-2 text-sm text-gray-500">No tiene correos registrados.</p>
+
+              {cargandoCorreos ? (
+                <p className="mt-2 text-sm text-gray-500">Cargando correos...</p>
               ) : (
-                <ul className="mt-2 space-y-1 text-sm text-gray-800">
-                  {persona.correos.map((correo) => (
-                    <li key={correo.EmailAddressID}>{correo.EmailAddress}</li>
-                  ))}
-                </ul>
+                <>
+                  {errorCorreos && (
+                    <p className="mt-2 text-sm text-red-600" role="alert">
+                      {errorCorreos}
+                    </p>
+                  )}
+
+                  {correos.length === 0 ? (
+                    <p className="mt-2 text-sm text-gray-500">No tiene correos registrados.</p>
+                  ) : (
+                    <ul className="mt-2 space-y-1 text-sm text-gray-800">
+                      {correos.map((correo) => (
+                        <li key={correo.emailAddressId} className="flex items-center justify-between gap-2">
+                          <span>{correo.correo}</span>
+                          <button
+                            type="button"
+                            onClick={() => manejarEliminarCorreo(correo)}
+                            disabled={eliminandoCorreoId === correo.emailAddressId}
+                            className="text-xs font-medium text-red-600 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {eliminandoCorreoId === correo.emailAddressId ? 'Eliminando...' : 'Eliminar'}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <form onSubmit={manejarAgregarCorreo} className="mt-3 flex items-start gap-2">
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={nuevoCorreo}
+                        onChange={(evento) => setNuevoCorreo(evento.target.value)}
+                        placeholder="nuevo.correo@ejemplo.com"
+                        className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+                      />
+                      {errorAgregarCorreo && (
+                        <p className="mt-1 text-sm text-red-600" role="alert">
+                          {errorAgregarCorreo}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={agregandoCorreo}
+                      className="rounded-md bg-gray-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {agregandoCorreo ? 'Agregando...' : 'Agregar'}
+                    </button>
+                  </form>
+                </>
               )}
             </section>
 
