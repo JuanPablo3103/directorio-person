@@ -4,6 +4,10 @@
 // a dónde navegar. Este componente solo se ocupa del estado del formulario,
 // la normalización de datos antes de enviarlos y el reparto de errores del
 // backend a cada campo.
+//
+// Sin tarjeta alrededor: es un formulario de página completa, no un
+// diálogo flotante — vive directo sobre la superficie de la página, igual
+// que el resto de los controles del sistema.
 
 import { useState } from 'react';
 import { ETIQUETAS_TIPO } from '../constants/tiposPersona';
@@ -57,6 +61,10 @@ function repartirErroresPorCampo(mensaje) {
 
   return { erroresPorCampo, erroresGenerales };
 }
+
+// Mismos tokens que ya usan Login, Listado y Detalle para inputs/selects.
+const claseCampo =
+  'mt-1 w-full rounded-[var(--radius-control)] border border-borde bg-hoja px-3 py-2 text-sm text-texto outline-none focus-visible:ring-2 focus-visible:ring-acento';
 
 // valoresIniciales: { personType, title, firstName, middleName, lastName,
 // suffix, emailPromotion } - todos como string excepto emailPromotion
@@ -123,28 +131,24 @@ function FormularioPersona({
   }
 
   return (
-    <form
-      onSubmit={manejarEnvio}
-      noValidate
-      className="space-y-4 rounded-lg bg-white p-6 shadow-md"
-    >
+    <form onSubmit={manejarEnvio} noValidate className="space-y-5">
       {errorGeneral && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+        <p className="border-l-2 border-destructivo py-1 pl-3 text-sm text-destructivo" role="alert">
           {errorGeneral}
         </p>
       )}
 
       <div>
-        <label htmlFor="personType" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="personType" className="block text-sm text-texto-secundario">
           Tipo de persona *
         </label>
         <select
           id="personType"
           value={valores.personType}
           onChange={(evento) => actualizarCampo('personType', evento.target.value)}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+          className={claseCampo}
         >
-          <option value="">Selecciona un tipo...</option>
+          <option value="">Selecciona un tipo</option>
           {OPCIONES_TIPO_PERSONA.map((opcion) => (
             <option key={opcion.valor} value={opcion.valor}>
               {opcion.etiqueta}
@@ -152,12 +156,12 @@ function FormularioPersona({
           ))}
         </select>
         {erroresPorCampo.personType && (
-          <p className="mt-1 text-sm text-red-600">{erroresPorCampo.personType}</p>
+          <p className="mt-1 text-sm text-destructivo">{erroresPorCampo.personType}</p>
         )}
       </div>
 
       <div>
-        <label htmlFor="title" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="title" className="block text-sm text-texto-secundario">
           Título
         </label>
         <input
@@ -165,16 +169,16 @@ function FormularioPersona({
           type="text"
           value={valores.title}
           onChange={(evento) => actualizarCampo('title', evento.target.value)}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+          className={claseCampo}
         />
         {erroresPorCampo.title && (
-          <p className="mt-1 text-sm text-red-600">{erroresPorCampo.title}</p>
+          <p className="mt-1 text-sm text-destructivo">{erroresPorCampo.title}</p>
         )}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-5 sm:grid-cols-2">
         <div>
-          <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="firstName" className="block text-sm text-texto-secundario">
             Nombre *
           </label>
           <input
@@ -183,15 +187,15 @@ function FormularioPersona({
             maxLength={50}
             value={valores.firstName}
             onChange={(evento) => actualizarCampo('firstName', evento.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+            className={claseCampo}
           />
           {erroresPorCampo.firstName && (
-            <p className="mt-1 text-sm text-red-600">{erroresPorCampo.firstName}</p>
+            <p className="mt-1 text-sm text-destructivo">{erroresPorCampo.firstName}</p>
           )}
         </div>
 
         <div>
-          <label htmlFor="middleName" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="middleName" className="block text-sm text-texto-secundario">
             Segundo nombre
           </label>
           <input
@@ -200,17 +204,17 @@ function FormularioPersona({
             maxLength={50}
             value={valores.middleName}
             onChange={(evento) => actualizarCampo('middleName', evento.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+            className={claseCampo}
           />
           {erroresPorCampo.middleName && (
-            <p className="mt-1 text-sm text-red-600">{erroresPorCampo.middleName}</p>
+            <p className="mt-1 text-sm text-destructivo">{erroresPorCampo.middleName}</p>
           )}
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-5 sm:grid-cols-2">
         <div>
-          <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="lastName" className="block text-sm text-texto-secundario">
             Apellido *
           </label>
           <input
@@ -219,15 +223,15 @@ function FormularioPersona({
             maxLength={50}
             value={valores.lastName}
             onChange={(evento) => actualizarCampo('lastName', evento.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+            className={claseCampo}
           />
           {erroresPorCampo.lastName && (
-            <p className="mt-1 text-sm text-red-600">{erroresPorCampo.lastName}</p>
+            <p className="mt-1 text-sm text-destructivo">{erroresPorCampo.lastName}</p>
           )}
         </div>
 
         <div>
-          <label htmlFor="suffix" className="block text-sm font-medium text-gray-700">
+          <label htmlFor="suffix" className="block text-sm text-texto-secundario">
             Sufijo
           </label>
           <input
@@ -235,23 +239,23 @@ function FormularioPersona({
             type="text"
             value={valores.suffix}
             onChange={(evento) => actualizarCampo('suffix', evento.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+            className={claseCampo}
           />
           {erroresPorCampo.suffix && (
-            <p className="mt-1 text-sm text-red-600">{erroresPorCampo.suffix}</p>
+            <p className="mt-1 text-sm text-destructivo">{erroresPorCampo.suffix}</p>
           )}
         </div>
       </div>
 
       <div>
-        <label htmlFor="emailPromotion" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="emailPromotion" className="block text-sm text-texto-secundario">
           Preferencia de promociones
         </label>
         <select
           id="emailPromotion"
           value={valores.emailPromotion}
           onChange={(evento) => actualizarCampo('emailPromotion', evento.target.value)}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+          className={claseCampo}
         >
           {OPCIONES_EMAIL_PROMOTION.map((opcion) => (
             <option key={opcion.valor} value={opcion.valor}>
@@ -260,7 +264,7 @@ function FormularioPersona({
           ))}
         </select>
         {erroresPorCampo.emailPromotion && (
-          <p className="mt-1 text-sm text-red-600">{erroresPorCampo.emailPromotion}</p>
+          <p className="mt-1 text-sm text-destructivo">{erroresPorCampo.emailPromotion}</p>
         )}
       </div>
 
@@ -268,14 +272,14 @@ function FormularioPersona({
         <button
           type="button"
           onClick={alCancelar}
-          className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="rounded-[var(--radius-control)] border border-borde px-4 py-2 text-sm font-medium text-texto outline-none hover:bg-hoja focus-visible:ring-2 focus-visible:ring-acento"
         >
           Cancelar
         </button>
         <button
           type="submit"
           disabled={guardando}
-          className="rounded-md bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="rounded-[var(--radius-control)] bg-acento px-4 py-2 text-sm font-medium text-acento-texto outline-none hover:brightness-95 focus-visible:ring-2 focus-visible:ring-acento focus-visible:ring-offset-2 focus-visible:ring-offset-superficie disabled:cursor-not-allowed disabled:opacity-60"
         >
           {guardando ? textoGuardando : textoGuardar}
         </button>
