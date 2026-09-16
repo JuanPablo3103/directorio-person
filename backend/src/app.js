@@ -11,6 +11,7 @@ const personasRoutes = require('./routes/personas.routes');
 const correosRoutes = require('./routes/correos.routes');
 const telefonosRoutes = require('./routes/telefonos.routes');
 const direccionesRoutes = require('./routes/direcciones.routes');
+const estadisticasRoutes = require('./routes/estadisticas.routes');
 const catalogosRoutes = require('./routes/catalogos.routes');
 const verificarToken = require('./middlewares/auth.middleware');
 const { rutaNoEncontrada, manejadorErrores } = require('./middlewares/error.middleware');
@@ -59,6 +60,9 @@ app.use('/api/personas', verificarToken, telefonosRoutes);
 // Mismo criterio que correosRoutes y telefonosRoutes: router aparte,
 // mismo prefijo y token.
 app.use('/api/personas', verificarToken, direccionesRoutes);
+
+// Indicadores agregados del directorio, para la pantalla de inicio.
+app.use('/api/estadisticas', verificarToken, estadisticasRoutes);
 
 // Catálogos de solo lectura (tipos de teléfono y de dirección, países y
 // estados). Protegidos igual que personas: alimentan los selectores del

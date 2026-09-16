@@ -1,1 +1,135 @@
+/* Tipografía: Barlow nace de la señalética de transporte; Barlow Condensed,
+   de dorsales de carrera y planos de geometría de cuadro. Ver plan de diseño. */
+@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap');
+
 @import "tailwindcss";
+
+/* Modo oscuro por clase (no solo por preferencia del sistema), para poder
+   persistir la elección de la persona en localStorage y aplicarla nosotros
+   mismos con un toggle, en vez de depender únicamente de prefers-color-scheme. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---------------------------------------------------------------------
+   Tokens crudos, con prefijo --tk- para no chocar de nombre con las
+   variables --color-* que Tailwind genera dentro de @theme más abajo.
+   Si un token semántico (--tk-superficie) se llamara igual que su
+   utilidad de Tailwind (--color-superficie), "@theme { --color-superficie:
+   var(--color-superficie) }" sería una referencia circular. Con prefijos
+   distintos, @theme solo lee de acá y nunca de sí mismo.
+   --------------------------------------------------------------------- */
+:root {
+  /* Paleta de marca: fija, no cambia entre modo claro y oscuro. Son los
+     colores del sujeto (acero, ámbar reflectante, tinta de cuadro) y no
+     deben "suavizarse" en modo oscuro o pierden su razón de ser. */
+  --tk-tinta: #15181e;
+  --tk-acero: #5e6a78;
+  --tk-papel: #f1f3f5;
+  --tk-niebla: #dde1e6;
+  --tk-blanco: #ffffff;
+  --tk-reflectante: #f2a529;
+  --tk-pino: #2f6b4f;
+  --tk-oxido: #b4362c;
+
+  /* Tokens semánticos (modo claro): a esto se refieren los componentes,
+     nunca directo a la paleta. Así el modo oscuro es una sola redefinición
+     de estas variables, no un "dark:" repetido en cada archivo. */
+  --tk-superficie: var(--tk-papel);
+  --tk-hoja: var(--tk-blanco);
+  --tk-texto: var(--tk-tinta);
+  --tk-texto-secundario: var(--tk-acero);
+  --tk-borde: var(--tk-niebla);
+  --tk-borde-fuerte: var(--tk-acero);
+
+  --tk-acento: var(--tk-reflectante);
+  --tk-acento-texto: var(--tk-tinta); /* texto SOBRE el acento: nunca blanco, el contraste no da */
+  --tk-confirmacion: var(--tk-pino);
+  --tk-destructivo: var(--tk-oxido);
+}
+
+/* El modo oscuro invierte superficie/texto y reajusta los dos colores de
+   estado (confirmación/destructivo) para que sigan siendo legibles sobre
+   fondo oscuro. El ámbar no se toca: ya rinde bien en ambos fondos. */
+.dark {
+  --tk-superficie: #0e1014;
+  --tk-hoja: #1a1d24;
+  --tk-texto: var(--tk-papel);
+  --tk-texto-secundario: #98a2b0;
+  --tk-borde: #2a2e37;
+  --tk-borde-fuerte: #454c58;
+
+  --tk-acento: var(--tk-reflectante);
+  --tk-acento-texto: var(--tk-tinta);
+  --tk-confirmacion: #4b9873;
+  --tk-destructivo: #d16a5c;
+}
+
+/* ---------------------------------------------------------------------
+   @theme conecta los tokens de arriba con las utilidades de Tailwind:
+   a partir de esto existen bg-superficie, text-texto-secundario,
+   border-acento, ring-acento, font-display, etc. Cada --color-* de acá
+   lee de un --tk-* correspondiente: nunca del mismo nombre.
+   --------------------------------------------------------------------- */
+@theme {
+  --color-superficie: var(--tk-superficie);
+  --color-hoja: var(--tk-hoja);
+  --color-texto: var(--tk-texto);
+  --color-texto-secundario: var(--tk-texto-secundario);
+  --color-borde: var(--tk-borde);
+  --color-borde-fuerte: var(--tk-borde-fuerte);
+  --color-acento: var(--tk-acento);
+  --color-acento-texto: var(--tk-acento-texto);
+  --color-confirmacion: var(--tk-confirmacion);
+  --color-destructivo: var(--tk-destructivo);
+
+  /* La paleta cruda queda disponible también (bg-tinta, text-acero...)
+     para los pocos usos que de verdad son un color fijo del sujeto y no
+     una superficie de la interfaz (por ejemplo, un acento decorativo que
+     deba leerse igual sin importar el tema). El logotipo y el riel de
+     navegación, en cambio, usan los tokens semánticos: tienen que seguir
+     siendo visibles cuando el tema invierte fondo y texto. */
+  --color-tinta: var(--tk-tinta);
+  --color-acero: var(--tk-acero);
+  --color-papel: var(--tk-papel);
+  --color-niebla: var(--tk-niebla);
+  --color-reflectante: var(--tk-reflectante);
+  --color-pino: var(--tk-pino);
+  --color-oxido: var(--tk-oxido);
+
+  --font-sans: 'Barlow', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Barlow Condensed', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', 'SFMono-Regular', Menlo, Consolas, monospace;
+
+  /* Radio mínimo, casi recto: para inputs/botones, no para "tarjetas"
+     (acá no hay tarjetas). Nada de rounded-xl ni rounded-full salvo
+     elementos circulares reales (avatar, punto de estado). */
+  --radius-control: 3px;
+
+  /* El único ángulo del sistema: geometría de cuadro de ruta. Se usa en
+     transforms del logotipo y de acentos gráficos puntuales, nunca en
+     texto ni en controles interactivos. */
+  --angulo-marca: 73deg;
+}
+
+/* Base tipográfica: Barlow para todo el cuerpo de la aplicación. */
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-superficie);
+  color: var(--color-texto);
+}
+
+/* Cifras y encabezados grandes usan numeros tabulares, para que las
+   columnas de identificadores/teléfonos no "bailen" entre filas. */
+.font-display {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Respeta la preferencia de movimiento reducido del sistema operativo:
+   ninguna transición ni animación debe imponerse sobre esta elección. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

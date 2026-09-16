@@ -6,7 +6,6 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { obtenerPersonaPorId, eliminarPersona } from '../api/personas.api';
 import clienteApi from '../api/client';
 import { ETIQUETAS_TIPO } from '../constants/tiposPersona';
-import Encabezado from '../components/Encabezado';
 
 function DetallePersona() {
   const { id } = useParams();
@@ -493,13 +492,13 @@ function DetallePersona() {
 
     try {
       await eliminarPersona(id);
-      navigate('/', { replace: true });
+      navigate('/personas', { replace: true });
     } catch (errorPeticion) {
       if (errorPeticion.response?.status === 404) {
         // Ya no existe (por ejemplo, la borraron desde otra sesión):
         // el resultado que el usuario espera es el mismo que si hubiera
         // tenido éxito, así que se navega igual al listado.
-        navigate('/', { replace: true });
+        navigate('/personas', { replace: true });
         return;
       }
 
@@ -519,13 +518,10 @@ function DetallePersona() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <Encabezado />
-
-      <main className="mx-auto max-w-3xl px-4 py-6">
+    <div className="mx-auto max-w-3xl px-4 py-6">
         <div className="flex items-center justify-between">
           {/* Siempre visible, independientemente del estado de la carga */}
-          <Link to="/" className="inline-block text-sm text-gray-600 hover:text-gray-800">
+          <Link to="/personas" className="inline-block text-sm text-gray-600 hover:text-gray-800">
             ← Volver al listado
           </Link>
 
@@ -571,7 +567,7 @@ function DetallePersona() {
               No existe ninguna persona con el identificador {id}.
             </p>
             <Link
-              to="/"
+              to="/personas"
               className="mt-4 inline-block rounded-md bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
             >
               Volver al listado
@@ -882,7 +878,6 @@ function DetallePersona() {
             </section>
           </div>
         )}
-      </main>
     </div>
   );
 }

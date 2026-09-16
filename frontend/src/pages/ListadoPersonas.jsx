@@ -1,22 +1,30 @@
-// Página de listado de personas (ruta "/"): tabla paginada con búsqueda
-// por nombre/apellido y filtro por tipo de persona.
+// Página de listado de personas (ruta "/personas"): tabla paginada con
+// búsqueda por nombre/apellido y filtro por tipo de persona.
+//
+// Sin tarjeta blanca ni sombra alrededor de la tabla: la separación entre
+// filas es un filete (border-borde), no un contenedor flotante. La fila
+// activa (hover o foco de teclado) se marca con un tick ámbar a la
+// izquierda, el mismo lenguaje que ya usa el riel de navegación para
+// indicar posición.
 
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { listarPersonas } from '../api/personas.api';
 import { ETIQUETAS_TIPO, OPCIONES_TIPO } from '../constants/tiposPersona';
-import Encabezado from '../components/Encabezado';
 
 const LIMITE = 20;
 
 function ListadoPersonas() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // Texto que el usuario está escribiendo, sin filtrar todavía.
   const [buscarInput, setBuscarInput] = useState('');
   // Texto ya "asentado" tras el retardo, el que realmente se envía a la API.
   const [buscar, setBuscar] = useState('');
-  const [tipo, setTipo] = useState('');
+  // Si se llega acá con "?tipo=XX" en la URL (por ejemplo, desde un
+  // segmento de la barra de Inicio), ese es el filtro inicial.
+  const [tipo, setTipo] = useState(() => searchParams.get('tipo') ?? '');
   const [pagina, setPagina] = useState(1);
 
   const [datos, setDatos] = useState([]);
@@ -86,139 +94,168 @@ function ListadoPersonas() {
   const enPrimeraPagina = pagina <= 1;
   const enUltimaPagina = totalPaginas === 0 || pagina >= totalPaginas;
 
+  const campoBusqueda = (
+    <input
+      type="text"
+      value={buscarInput}
+      onChange={(evento) => setBuscarInput(evento.target.value)}
+      placeholder="Buscar por nombre o apellido"
+      className="w-full max-w-xs rounded-[var(--radius-control)] border border-borde bg-hoja px-3 py-2 text-sm text-texto outline-none placeholder:text-texto-secundario focus-visible:ring-2 focus-visible:ring-acento"
+    />
+  );
+
+  const selectorTipo = (
+    <select
+      value={tipo}
+      onChange={manejarCambioTipo}
+      className="rounded-[var(--radius-control)] border border-borde bg-hoja px-3 py-2 text-sm text-texto outline-none focus-visible:ring-2 focus-visible:ring-acento"
+    >
+      {OPCIONES_TIPO.map((opcion) => (
+        <option key={opcion.valor} value={opcion.valor}>
+          {opcion.etiqueta}
+        </option>
+      ))}
+    </select>
+  );
+
   return (
-    <div className="min-h-screen bg-gray-100">
-      <Encabezado />
-
-      <main className="mx-auto max-w-5xl px-4 py-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <input
-              type="text"
-              value={buscarInput}
-              onChange={(evento) => setBuscarInput(evento.target.value)}
-              placeholder="Buscar por nombre o apellido..."
-              className="w-full max-w-xs rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
-            />
-
-            <select
-              value={tipo}
-              onChange={manejarCambioTipo}
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
-            >
-              {OPCIONES_TIPO.map((opcion) => (
-                <option key={opcion.valor} value={opcion.valor}>
-                  {opcion.etiqueta}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => navigate('/personas/nueva')}
-            className="rounded-md bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
-          >
-            Registrar persona
-          </button>
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {campoBusqueda}
+          {selectorTipo}
         </div>
 
-        <div className="overflow-x-auto rounded-lg bg-white shadow-md">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-gray-200 text-gray-500">
-              <tr>
-                <th className="px-4 py-3 font-medium">ID</th>
-                <th className="px-4 py-3 font-medium">Nombre completo</th>
-                <th className="px-4 py-3 font-medium">Tipo</th>
-                <th className="px-4 py-3 font-medium">Correo</th>
+        <button
+          type="button"
+          onClick={() => navigate('/personas/nueva')}
+          className="rounded-[var(--radius-control)] bg-acento px-4 py-2 text-sm font-medium text-acento-texto outline-none hover:brightness-95 focus-visible:ring-2 focus-visible:ring-acento focus-visible:ring-offset-2 focus-visible:ring-offset-superficie"
+        >
+          Registrar persona
+        </button>
+      </div>
+
+      {cargando && <p className="py-10 text-center text-sm text-texto-secundario">Cargando...</p>}
+
+      {!cargando && error && <p className="py-10 text-center text-sm text-destructivo">{error}</p>}
+
+      {!cargando && !error && datos.length === 0 && (
+        <p className="py-10 text-center text-sm text-texto-secundario">
+          No encontramos a nadie con esos criterios. Probá con otro nombre o cambiá el filtro de tipo.
+        </p>
+      )}
+
+      {!cargando && !error && datos.length > 0 && (
+        <>
+          {/* Tabla: desde md hacia arriba. */}
+          <table className="hidden w-full border-collapse text-left text-sm md:table">
+            <thead>
+              <tr className="border-b border-borde text-texto-secundario">
+                <th className="py-2 pr-4 pl-4 font-normal">Nombre completo</th>
+                <th className="py-2 pr-4 font-normal">Tipo</th>
+                <th className="py-2 pr-4 font-normal">Correo</th>
+                <th className="py-2 pr-0 text-right font-normal">ID</th>
               </tr>
             </thead>
             <tbody>
-              {cargando && (
-                <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-gray-500">
-                    Cargando...
+              {datos.map((persona) => (
+                <tr
+                  key={persona.BusinessEntityID}
+                  onClick={() => navigate(`/personas/${persona.BusinessEntityID}`)}
+                  className="group cursor-pointer border-b border-borde last:border-0 hover:bg-hoja"
+                >
+                  <td className="relative py-3 pr-4 pl-4 text-texto">
+                    <span
+                      className="absolute inset-y-0 left-0 w-[3px] bg-acento opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+                      aria-hidden="true"
+                    />
+                    <Link
+                      to={`/personas/${persona.BusinessEntityID}`}
+                      onClick={(evento) => evento.stopPropagation()}
+                      className="rounded-[var(--radius-control)] outline-none focus-visible:ring-2 focus-visible:ring-acento"
+                    >
+                      {persona.nombreCompleto}
+                    </Link>
+                  </td>
+                  <td className="py-3 pr-4 text-texto-secundario">
+                    {ETIQUETAS_TIPO[persona.PersonType] ?? persona.PersonType}
+                  </td>
+                  <td className="py-3 pr-4 text-texto-secundario">{persona.correo || '—'}</td>
+                  <td className="py-3 pr-0 text-right font-mono text-xs tabular-nums text-texto-secundario">
+                    {persona.BusinessEntityID}
                   </td>
                 </tr>
-              )}
-
-              {!cargando && error && (
-                <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-red-600">
-                    {error}
-                  </td>
-                </tr>
-              )}
-
-              {!cargando && !error && datos.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-gray-500">
-                    No se encontraron personas con esos criterios.
-                  </td>
-                </tr>
-              )}
-
-              {!cargando &&
-                !error &&
-                datos.map((persona) => (
-                  <tr
-                    key={persona.BusinessEntityID}
-                    onClick={() => navigate(`/personas/${persona.BusinessEntityID}`)}
-                    className="cursor-pointer border-b border-gray-100 last:border-0 hover:bg-gray-50"
-                  >
-                    <td className="px-4 py-3 text-gray-800">{persona.BusinessEntityID}</td>
-                    <td className="px-4 py-3 text-gray-800">{persona.nombreCompleto}</td>
-                    <td className="px-4 py-3 text-gray-800">
-                      {ETIQUETAS_TIPO[persona.PersonType] ?? persona.PersonType}
-                    </td>
-                    <td className="px-4 py-3 text-gray-800">{persona.correo || '-'}</td>
-                  </tr>
-                ))}
+              ))}
             </tbody>
           </table>
-        </div>
 
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-gray-600">
-          <span>
-            Página {totalPaginas === 0 ? 0 : pagina} de {totalPaginas} · {total} registros encontrados
-          </span>
+          {/* Tarjetas: por debajo de md, la tabla se vuelve ilegible en
+              columnas angostas, así que cada persona pasa a ser un bloque
+              apilado en vez de una fila. */}
+          <ul className="md:hidden">
+            {datos.map((persona) => (
+              <li key={persona.BusinessEntityID} className="border-b border-borde py-3 last:border-0">
+                <Link
+                  to={`/personas/${persona.BusinessEntityID}`}
+                  className="flex items-start justify-between gap-3 rounded-[var(--radius-control)] outline-none focus-visible:ring-2 focus-visible:ring-acento"
+                >
+                  <div>
+                    <p className="text-sm text-texto">{persona.nombreCompleto}</p>
+                    <p className="mt-0.5 text-sm text-texto-secundario">
+                      {ETIQUETAS_TIPO[persona.PersonType] ?? persona.PersonType}
+                    </p>
+                    <p className="mt-0.5 text-sm text-texto-secundario">{persona.correo || '—'}</p>
+                  </div>
+                  <span className="shrink-0 font-mono text-xs tabular-nums text-texto-secundario">
+                    {persona.BusinessEntityID}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
 
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setPagina(1)}
-              disabled={enPrimeraPagina}
-              className="rounded-md border border-gray-300 px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Primera
-            </button>
-            <button
-              type="button"
-              onClick={() => setPagina((paginaActual) => paginaActual - 1)}
-              disabled={enPrimeraPagina}
-              className="rounded-md border border-gray-300 px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Anterior
-            </button>
-            <button
-              type="button"
-              onClick={() => setPagina((paginaActual) => paginaActual + 1)}
-              disabled={enUltimaPagina}
-              className="rounded-md border border-gray-300 px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Siguiente
-            </button>
-            <button
-              type="button"
-              onClick={() => setPagina(totalPaginas)}
-              disabled={enUltimaPagina}
-              className="rounded-md border border-gray-300 px-3 py-1.5 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Última
-            </button>
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 text-sm text-texto-secundario">
+            <span>
+              Página {pagina} de {totalPaginas} · {total.toLocaleString('es-AR')} registros
+            </span>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setPagina(1)}
+                disabled={enPrimeraPagina}
+                className="rounded-[var(--radius-control)] border border-borde px-3 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-acento disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Primera
+              </button>
+              <button
+                type="button"
+                onClick={() => setPagina((paginaActual) => paginaActual - 1)}
+                disabled={enPrimeraPagina}
+                className="rounded-[var(--radius-control)] border border-borde px-3 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-acento disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Anterior
+              </button>
+              <button
+                type="button"
+                onClick={() => setPagina((paginaActual) => paginaActual + 1)}
+                disabled={enUltimaPagina}
+                className="rounded-[var(--radius-control)] border border-borde px-3 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-acento disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Siguiente
+              </button>
+              <button
+                type="button"
+                onClick={() => setPagina(totalPaginas)}
+                disabled={enUltimaPagina}
+                className="rounded-[var(--radius-control)] border border-borde px-3 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-acento disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Última
+              </button>
+            </div>
           </div>
-        </div>
-      </main>
+        </>
+      )}
     </div>
   );
 }

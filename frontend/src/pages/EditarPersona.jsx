@@ -6,7 +6,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { obtenerPersonaPorId, actualizarPersona } from '../api/personas.api';
-import Encabezado from '../components/Encabezado';
 import FormularioPersona from '../components/FormularioPersona';
 
 // Convierte los datos que devuelve el backend (con null en los campos
@@ -74,43 +73,39 @@ function EditarPersona() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <Encabezado />
+    <div className="mx-auto max-w-2xl px-4 py-6">
+      <h1 className="mb-4 text-xl font-semibold text-gray-800">Editar persona</h1>
 
-      <main className="mx-auto max-w-2xl px-4 py-6">
-        <h1 className="mb-4 text-xl font-semibold text-gray-800">Editar persona</h1>
+      {cargando && (
+        <div className="rounded-lg bg-white p-8 text-center text-gray-500 shadow-md">
+          Cargando...
+        </div>
+      )}
 
-        {cargando && (
-          <div className="rounded-lg bg-white p-8 text-center text-gray-500 shadow-md">
-            Cargando...
-          </div>
-        )}
+      {!cargando && noEncontrada && (
+        <div className="rounded-lg bg-white p-8 text-center shadow-md">
+          <p className="text-lg font-medium text-gray-800">Persona no encontrada</p>
+          <p className="mt-1 text-sm text-gray-500">
+            No existe ninguna persona con el identificador {id}.
+          </p>
+        </div>
+      )}
 
-        {!cargando && noEncontrada && (
-          <div className="rounded-lg bg-white p-8 text-center shadow-md">
-            <p className="text-lg font-medium text-gray-800">Persona no encontrada</p>
-            <p className="mt-1 text-sm text-gray-500">
-              No existe ninguna persona con el identificador {id}.
-            </p>
-          </div>
-        )}
+      {!cargando && !noEncontrada && error && (
+        <div className="rounded-lg bg-white p-8 text-center text-red-600 shadow-md">
+          {error}
+        </div>
+      )}
 
-        {!cargando && !noEncontrada && error && (
-          <div className="rounded-lg bg-white p-8 text-center text-red-600 shadow-md">
-            {error}
-          </div>
-        )}
-
-        {!cargando && !noEncontrada && !error && valoresIniciales && (
-          <FormularioPersona
-            valoresIniciales={valoresIniciales}
-            alGuardar={alGuardar}
-            alCancelar={() => navigate(`/personas/${id}`)}
-            textoGuardar="Actualizar"
-            textoGuardando="Actualizando..."
-          />
-        )}
-      </main>
+      {!cargando && !noEncontrada && !error && valoresIniciales && (
+        <FormularioPersona
+          valoresIniciales={valoresIniciales}
+          alGuardar={alGuardar}
+          alCancelar={() => navigate(`/personas/${id}`)}
+          textoGuardar="Actualizar"
+          textoGuardando="Actualizando..."
+        />
+      )}
     </div>
   );
 }
