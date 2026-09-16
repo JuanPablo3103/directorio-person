@@ -32,6 +32,23 @@ function DetallePersona() {
 
   const [eliminandoCorreoId, setEliminandoCorreoId] = useState(null);
 
+  // Teléfonos: mismo patrón que correos (HU-08), pero la clave para saber
+  // "cuál se está borrando" es compuesta (numero + tipoId), porque la
+  // tabla no tiene una columna autoincremental propia.
+  const [telefonos, setTelefonos] = useState([]);
+  const [cargandoTelefonos, setCargandoTelefonos] = useState(true);
+  const [errorTelefonos, setErrorTelefonos] = useState('');
+
+  const [tiposTelefono, setTiposTelefono] = useState([]);
+  const [cargandoTiposTelefono, setCargandoTiposTelefono] = useState(true);
+
+  const [nuevoNumero, setNuevoNumero] = useState('');
+  const [nuevoTipoId, setNuevoTipoId] = useState('');
+  const [agregandoTelefono, setAgregandoTelefono] = useState(false);
+  const [errorAgregarTelefono, setErrorAgregarTelefono] = useState('');
+
+  const [eliminandoTelefonoClave, setEliminandoTelefonoClave] = useState(null);
+
   // Se vuelve a cargar cada vez que cambia el id de la URL (por ejemplo,
   // si el usuario navega de un detalle a otro sin pasar por el listado).
   useEffect(() => {
@@ -147,6 +164,132 @@ function DetallePersona() {
       setErrorCorreos('No se pudo eliminar el correo. Intenta nuevamente.');
     } finally {
       setEliminandoCorreoId(null);
+    }
+  }
+
+  // Carga los teléfonos por separado, contra el endpoint propio de HU-09
+  // (GET /api/personas/:id/telefonos), no desde el detalle embebido.
+  useEffect(() => {
+    let cancelado = false;
+
+    async function cargarTelefonos() {
+      setCargandoTelefonos(true);
+      setErrorTelefonos('');
+
+      try {
+        const respuesta = await clienteApi.get(`/personas/${id}/telefonos`);
+        if (!cancelado) {
+          setTelefonos(respuesta.data);
+        }
+      } catch {
+        if (!cancelado) {
+          setErrorTelefonos('No se pudieron cargar los teléfonos. Intenta nuevamente.');
+        }
+      } finally {
+        if (!cancelado) {
+          setCargandoTelefonos(false);
+        }
+      }
+    }
+
+    cargarTelefonos();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [id]);
+
+  // Catálogo de tipos de teléfono para el <select> del formulario. No
+  // depende de "id": se carga una sola vez al montar el componente.
+  useEffect(() => {
+    let cancelado = false;
+
+    async function cargarTiposTelefono() {
+      setCargandoTiposTelefono(true);
+
+      try {
+        const respuesta = await clienteApi.get('/catalogos/tipos-telefono');
+        if (!cancelado) {
+          setTiposTelefono(respuesta.data);
+        }
+      } catch {
+        // Si falla, el select queda vacío y el usuario no podrá agregar
+        // teléfonos hasta refrescar; no bloquea el resto del detalle.
+      } finally {
+        if (!cancelado) {
+          setCargandoTiposTelefono(false);
+        }
+      }
+    }
+
+    cargarTiposTelefono();
+
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  async function manejarAgregarTelefono(evento) {
+    evento.preventDefault();
+    setErrorAgregarTelefono('');
+
+    if (!nuevoTipoId) {
+      setErrorAgregarTelefono('Selecciona un tipo de teléfono.');
+      return;
+    }
+
+    setAgregandoTelefono(true);
+
+    try {
+      const respuesta = await clienteApi.post(`/personas/${id}/telefonos`, {
+        numero: nuevoNumero.trim(),
+        tipoId: Number(nuevoTipoId)
+      });
+
+      setTelefonos((telefonosActuales) => [...telefonosActuales, respuesta.data]);
+      setNuevoNumero('');
+      setNuevoTipoId('');
+    } catch (errorPeticion) {
+      if (errorPeticion.response?.status === 400 || errorPeticion.response?.status === 409) {
+        setErrorAgregarTelefono(
+          errorPeticion.response.data?.mensaje ?? 'No se pudo agregar el teléfono.'
+        );
+      } else if (!errorPeticion.response) {
+        setErrorAgregarTelefono('No se pudo conectar con el servidor. Intenta más tarde.');
+      } else {
+        setErrorAgregarTelefono('Ocurrió un error inesperado al agregar el teléfono.');
+      }
+    } finally {
+      setAgregandoTelefono(false);
+    }
+  }
+
+  async function manejarEliminarTelefono(telefono) {
+    const confirmado = window.confirm('¿Eliminar este teléfono?');
+
+    if (!confirmado) {
+      return;
+    }
+
+    const clave = `${telefono.numero}-${telefono.tipoId}`;
+
+    setErrorTelefonos('');
+    setEliminandoTelefonoClave(clave);
+
+    try {
+      await clienteApi.delete(`/personas/${id}/telefonos`, {
+        params: { numero: telefono.numero, tipoId: telefono.tipoId }
+      });
+
+      setTelefonos((telefonosActuales) =>
+        telefonosActuales.filter(
+          (t) => !(t.numero === telefono.numero && t.tipoId === telefono.tipoId)
+        )
+      );
+    } catch {
+      setErrorTelefonos('No se pudo eliminar el teléfono. Intenta nuevamente.');
+    } finally {
+      setEliminandoTelefonoClave(null);
     }
   }
 
@@ -347,17 +490,78 @@ function DetallePersona() {
               <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
                 Teléfonos
               </h3>
-              {persona.telefonos.length === 0 ? (
-                <p className="mt-2 text-sm text-gray-500">No tiene teléfonos registrados.</p>
+
+              {cargandoTelefonos ? (
+                <p className="mt-2 text-sm text-gray-500">Cargando teléfonos...</p>
               ) : (
-                <ul className="mt-2 space-y-1 text-sm text-gray-800">
-                  {persona.telefonos.map((telefono) => (
-                    <li key={`${telefono.PhoneNumber}-${telefono.PhoneNumberTypeID}`}>
-                      {telefono.PhoneNumber}{' '}
-                      <span className="text-gray-500">({telefono.tipoTelefono})</span>
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  {errorTelefonos && (
+                    <p className="mt-2 text-sm text-red-600" role="alert">
+                      {errorTelefonos}
+                    </p>
+                  )}
+
+                  {telefonos.length === 0 ? (
+                    <p className="mt-2 text-sm text-gray-500">No tiene teléfonos registrados.</p>
+                  ) : (
+                    <ul className="mt-2 space-y-1 text-sm text-gray-800">
+                      {telefonos.map((telefono) => {
+                        const clave = `${telefono.numero}-${telefono.tipoId}`;
+                        return (
+                          <li key={clave} className="flex items-center justify-between gap-2">
+                            <span>
+                              {telefono.numero}{' '}
+                              <span className="text-gray-500">({telefono.tipo})</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => manejarEliminarTelefono(telefono)}
+                              disabled={eliminandoTelefonoClave === clave}
+                              className="text-xs font-medium text-red-600 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {eliminandoTelefonoClave === clave ? 'Eliminando...' : 'Eliminar'}
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+
+                  <form onSubmit={manejarAgregarTelefono} className="mt-3 flex flex-wrap items-start gap-2">
+                    <input
+                      type="text"
+                      value={nuevoNumero}
+                      onChange={(evento) => setNuevoNumero(evento.target.value)}
+                      placeholder="Número de teléfono"
+                      className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+                    />
+                    <select
+                      value={nuevoTipoId}
+                      onChange={(evento) => setNuevoTipoId(evento.target.value)}
+                      disabled={cargandoTiposTelefono}
+                      className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+                    >
+                      <option value="">Selecciona un tipo...</option>
+                      {tiposTelefono.map((tipo) => (
+                        <option key={tipo.PhoneNumberTypeID} value={tipo.PhoneNumberTypeID}>
+                          {tipo.Name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="submit"
+                      disabled={agregandoTelefono}
+                      className="rounded-md bg-gray-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {agregandoTelefono ? 'Agregando...' : 'Agregar'}
+                    </button>
+                    {errorAgregarTelefono && (
+                      <p className="w-full text-sm text-red-600" role="alert">
+                        {errorAgregarTelefono}
+                      </p>
+                    )}
+                  </form>
+                </>
               )}
             </section>
 
