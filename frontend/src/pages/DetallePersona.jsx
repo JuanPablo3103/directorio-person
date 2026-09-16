@@ -49,6 +49,31 @@ function DetallePersona() {
 
   const [eliminandoTelefonoClave, setEliminandoTelefonoClave] = useState(null);
 
+  // Direcciones: mismo patrón que correos y teléfonos, pero HU-10/HU-11
+  // son solo de consulta y alta (no hay eliminación en esta historia).
+  const [direcciones, setDirecciones] = useState([]);
+  const [cargandoDirecciones, setCargandoDirecciones] = useState(true);
+  const [errorDirecciones, setErrorDirecciones] = useState('');
+
+  const [tiposDireccion, setTiposDireccion] = useState([]);
+  const [cargandoTiposDireccion, setCargandoTiposDireccion] = useState(true);
+
+  const [estados, setEstados] = useState([]);
+  const [cargandoEstados, setCargandoEstados] = useState(true);
+
+  const [nuevaDireccion, setNuevaDireccion] = useState({
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    stateProvinceId: '',
+    postalCode: '',
+    addressTypeId: ''
+  });
+  const [agregandoDireccion, setAgregandoDireccion] = useState(false);
+  const [errorAgregarDireccion, setErrorAgregarDireccion] = useState('');
+
+  const [eliminandoDireccionId, setEliminandoDireccionId] = useState(null);
+
   // Se vuelve a cargar cada vez que cambia el id de la URL (por ejemplo,
   // si el usuario navega de un detalle a otro sin pasar por el listado).
   useEffect(() => {
@@ -290,6 +315,167 @@ function DetallePersona() {
       setErrorTelefonos('No se pudo eliminar el teléfono. Intenta nuevamente.');
     } finally {
       setEliminandoTelefonoClave(null);
+    }
+  }
+
+  // Carga las direcciones por separado, contra el endpoint propio de
+  // HU-10 (GET /api/personas/:id/direcciones), no desde el detalle embebido.
+  useEffect(() => {
+    let cancelado = false;
+
+    async function cargarDirecciones() {
+      setCargandoDirecciones(true);
+      setErrorDirecciones('');
+
+      try {
+        const respuesta = await clienteApi.get(`/personas/${id}/direcciones`);
+        if (!cancelado) {
+          setDirecciones(respuesta.data);
+        }
+      } catch {
+        if (!cancelado) {
+          setErrorDirecciones('No se pudieron cargar las direcciones. Intenta nuevamente.');
+        }
+      } finally {
+        if (!cancelado) {
+          setCargandoDirecciones(false);
+        }
+      }
+    }
+
+    cargarDirecciones();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [id]);
+
+  // Catálogo de tipos de dirección para el <select> del formulario. No
+  // depende de "id": se carga una sola vez al montar el componente.
+  useEffect(() => {
+    let cancelado = false;
+
+    async function cargarTiposDireccion() {
+      setCargandoTiposDireccion(true);
+
+      try {
+        const respuesta = await clienteApi.get('/catalogos/tipos-direccion');
+        if (!cancelado) {
+          setTiposDireccion(respuesta.data);
+        }
+      } catch {
+        // Si falla, el select queda vacío; no bloquea el resto del detalle.
+      } finally {
+        if (!cancelado) {
+          setCargandoTiposDireccion(false);
+        }
+      }
+    }
+
+    cargarTiposDireccion();
+
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  // Catálogo de estados/provincias (de todos los países) para el <select>
+  // del formulario. Tampoco depende de "id".
+  useEffect(() => {
+    let cancelado = false;
+
+    async function cargarEstados() {
+      setCargandoEstados(true);
+
+      try {
+        const respuesta = await clienteApi.get('/catalogos/estados');
+        if (!cancelado) {
+          setEstados(respuesta.data);
+        }
+      } catch {
+        // Si falla, el select queda vacío; no bloquea el resto del detalle.
+      } finally {
+        if (!cancelado) {
+          setCargandoEstados(false);
+        }
+      }
+    }
+
+    cargarEstados();
+
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  function actualizarCampoDireccion(campo, valor) {
+    setNuevaDireccion((valoresActuales) => ({ ...valoresActuales, [campo]: valor }));
+  }
+
+  async function manejarAgregarDireccion(evento) {
+    evento.preventDefault();
+    setErrorAgregarDireccion('');
+
+    if (!nuevaDireccion.stateProvinceId || !nuevaDireccion.addressTypeId) {
+      setErrorAgregarDireccion('Selecciona un estado/provincia y un tipo de dirección.');
+      return;
+    }
+
+    setAgregandoDireccion(true);
+
+    try {
+      const respuesta = await clienteApi.post(`/personas/${id}/direcciones`, {
+        addressLine1: nuevaDireccion.addressLine1.trim(),
+        addressLine2: nuevaDireccion.addressLine2.trim() || undefined,
+        city: nuevaDireccion.city.trim(),
+        stateProvinceId: Number(nuevaDireccion.stateProvinceId),
+        postalCode: nuevaDireccion.postalCode.trim(),
+        addressTypeId: Number(nuevaDireccion.addressTypeId)
+      });
+
+      setDirecciones((direccionesActuales) => [...direccionesActuales, respuesta.data]);
+      setNuevaDireccion({
+        addressLine1: '',
+        addressLine2: '',
+        city: '',
+        stateProvinceId: '',
+        postalCode: '',
+        addressTypeId: ''
+      });
+    } catch (errorPeticion) {
+      if (errorPeticion.response?.status === 400 || errorPeticion.response?.status === 409) {
+        setErrorAgregarDireccion(
+          errorPeticion.response.data?.mensaje ?? 'No se pudo agregar la dirección.'
+        );
+      } else if (!errorPeticion.response) {
+        setErrorAgregarDireccion('No se pudo conectar con el servidor. Intenta más tarde.');
+      } else {
+        setErrorAgregarDireccion('Ocurrió un error inesperado al agregar la dirección.');
+      }
+    } finally {
+      setAgregandoDireccion(false);
+    }
+  }
+
+  async function manejarEliminarDireccion(direccion) {
+    const confirmado = window.confirm('¿Eliminar esta dirección?');
+
+    if (!confirmado) {
+      return;
+    }
+
+    setErrorDirecciones('');
+    setEliminandoDireccionId(direccion.addressId);
+
+    try {
+      await clienteApi.delete(`/personas/${id}/direcciones/${direccion.addressId}`);
+      setDirecciones((direccionesActuales) =>
+        direccionesActuales.filter((d) => d.addressId !== direccion.addressId)
+      );
+    } catch {
+      setErrorDirecciones('No se pudo eliminar la dirección. Intenta nuevamente.');
+    } finally {
+      setEliminandoDireccionId(null);
     }
   }
 
@@ -570,27 +756,128 @@ function DetallePersona() {
               <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
                 Direcciones
               </h3>
-              {persona.direcciones.length === 0 ? (
-                <p className="mt-2 text-sm text-gray-500">No tiene direcciones registradas.</p>
+
+              {cargandoDirecciones ? (
+                <p className="mt-2 text-sm text-gray-500">Cargando direcciones...</p>
               ) : (
-                <ul className="mt-2 space-y-3 text-sm">
-                  {persona.direcciones.map((direccion) => (
-                    <li
-                      key={direccion.AddressID}
-                      className="border-b border-gray-100 pb-3 last:border-0 last:pb-0"
-                    >
-                      <p className="font-medium text-gray-800">{direccion.tipoDireccion}</p>
-                      <p className="text-gray-600">
-                        {direccion.AddressLine1}
-                        {direccion.AddressLine2 ? `, ${direccion.AddressLine2}` : ''}
+                <>
+                  {errorDirecciones && (
+                    <p className="mt-2 text-sm text-red-600" role="alert">
+                      {errorDirecciones}
+                    </p>
+                  )}
+
+                  {direcciones.length === 0 ? (
+                    <p className="mt-2 text-sm text-gray-500">No tiene direcciones registradas.</p>
+                  ) : (
+                    <ul className="mt-2 space-y-3 text-sm">
+                      {direcciones.map((direccion) => (
+                        <li
+                          key={direccion.addressId}
+                          className="border-b border-gray-100 pb-3 last:border-0 last:pb-0"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-medium text-gray-800">{direccion.tipoDireccion}</p>
+                            <button
+                              type="button"
+                              onClick={() => manejarEliminarDireccion(direccion)}
+                              disabled={eliminandoDireccionId === direccion.addressId}
+                              className="text-xs font-medium text-red-600 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {eliminandoDireccionId === direccion.addressId ? 'Eliminando...' : 'Eliminar'}
+                            </button>
+                          </div>
+                          <p className="text-gray-600">
+                            {direccion.linea1}
+                            {direccion.linea2 ? `, ${direccion.linea2}` : ''}
+                          </p>
+                          <p className="text-gray-600">
+                            {direccion.ciudad}, {direccion.estadoProvincia}, {direccion.pais}
+                          </p>
+                          <p className="text-gray-600">{direccion.codigoPostal}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <form onSubmit={manejarAgregarDireccion} className="mt-4 space-y-2">
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <input
+                        type="text"
+                        value={nuevaDireccion.addressLine1}
+                        onChange={(evento) => actualizarCampoDireccion('addressLine1', evento.target.value)}
+                        placeholder="Dirección (línea 1)"
+                        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+                      />
+                      <input
+                        type="text"
+                        value={nuevaDireccion.addressLine2}
+                        onChange={(evento) => actualizarCampoDireccion('addressLine2', evento.target.value)}
+                        placeholder="Dirección (línea 2, opcional)"
+                        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      <input
+                        type="text"
+                        value={nuevaDireccion.city}
+                        onChange={(evento) => actualizarCampoDireccion('city', evento.target.value)}
+                        placeholder="Ciudad"
+                        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+                      />
+                      <select
+                        value={nuevaDireccion.stateProvinceId}
+                        onChange={(evento) => actualizarCampoDireccion('stateProvinceId', evento.target.value)}
+                        disabled={cargandoEstados}
+                        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+                      >
+                        <option value="">Selecciona un estado/provincia...</option>
+                        {estados.map((estado) => (
+                          <option key={estado.StateProvinceID} value={estado.StateProvinceID}>
+                            {estado.Name} ({estado.CountryRegionCode})
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        type="text"
+                        value={nuevaDireccion.postalCode}
+                        onChange={(evento) => actualizarCampoDireccion('postalCode', evento.target.value)}
+                        placeholder="Código postal"
+                        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <select
+                        value={nuevaDireccion.addressTypeId}
+                        onChange={(evento) => actualizarCampoDireccion('addressTypeId', evento.target.value)}
+                        disabled={cargandoTiposDireccion}
+                        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+                      >
+                        <option value="">Selecciona un tipo...</option>
+                        {tiposDireccion.map((tipo) => (
+                          <option key={tipo.AddressTypeID} value={tipo.AddressTypeID}>
+                            {tipo.Name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="submit"
+                        disabled={agregandoDireccion}
+                        className="rounded-md bg-gray-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {agregandoDireccion ? 'Agregando...' : 'Agregar dirección'}
+                      </button>
+                    </div>
+
+                    {errorAgregarDireccion && (
+                      <p className="text-sm text-red-600" role="alert">
+                        {errorAgregarDireccion}
                       </p>
-                      <p className="text-gray-600">
-                        {direccion.City}, {direccion.estadoProvincia}, {direccion.pais}
-                      </p>
-                      <p className="text-gray-600">{direccion.PostalCode}</p>
-                    </li>
-                  ))}
-                </ul>
+                    )}
+                  </form>
+                </>
               )}
             </section>
           </div>

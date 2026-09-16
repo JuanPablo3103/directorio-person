@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth.routes');
 const personasRoutes = require('./routes/personas.routes');
 const correosRoutes = require('./routes/correos.routes');
 const telefonosRoutes = require('./routes/telefonos.routes');
+const direccionesRoutes = require('./routes/direcciones.routes');
 const catalogosRoutes = require('./routes/catalogos.routes');
 const verificarToken = require('./middlewares/auth.middleware');
 const { rutaNoEncontrada, manejadorErrores } = require('./middlewares/error.middleware');
@@ -46,6 +47,11 @@ app.use('/api/personas', verificarToken, correosRoutes);
 // Rutas de teléfonos de cada persona (/api/personas/:id/telefonos).
 // Mismo criterio que correosRoutes: router aparte, mismo prefijo y token.
 app.use('/api/personas', verificarToken, telefonosRoutes);
+
+// Rutas de direcciones de cada persona (/api/personas/:id/direcciones).
+// Mismo criterio que correosRoutes y telefonosRoutes: router aparte,
+// mismo prefijo y token.
+app.use('/api/personas', verificarToken, direccionesRoutes);
 
 // Catálogos de solo lectura (tipos de teléfono y de dirección, países y
 // estados). Protegidos igual que personas: alimentan los selectores del
