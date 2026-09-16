@@ -3,6 +3,8 @@
 
 const express = require('express');
 const cors = require('cors');
+const swaggerUi = require('swagger-ui-express');
+const especificacionSwagger = require('./docs/swagger');
 
 const authRoutes = require('./routes/auth.routes');
 const personasRoutes = require('./routes/personas.routes');
@@ -20,6 +22,11 @@ app.use(cors());
 
 // Permite leer cuerpos de petición en formato JSON.
 app.use(express.json());
+
+// Documentación interactiva de la API (Swagger UI), generada a partir de
+// los comentarios JSDoc en src/routes/*.routes.js. No requiere token: es
+// documentación pública, no un endpoint del recurso.
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(especificacionSwagger));
 
 // Ruta de verificación: sirve para comprobar que la API está viva.
 app.get('/api/salud', (req, res) => {
