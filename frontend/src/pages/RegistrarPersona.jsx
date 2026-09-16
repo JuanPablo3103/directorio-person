@@ -3,10 +3,15 @@
 // Person.BusinessEntity) y se conoce recién en la respuesta 201.
 // El formulario en sí (campos, validaciones, estado) vive en
 // FormularioPersona, compartido con EditarPersona.
+//
+// Sin <h1> propio: la barra de contexto ya muestra "Registrar persona"
+// para esta ruta (ver tituloDesdeRuta en BarraContexto.jsx). Repetirlo
+// sería la misma redundancia que ya corregimos en el login y en Inicio.
 
 import { useNavigate } from 'react-router-dom';
 import { crearPersona } from '../api/personas.api';
 import FormularioPersona from '../components/FormularioPersona';
+import { useToast } from '../context/ToastContext';
 
 const VALORES_INICIALES = {
   personType: '',
@@ -20,16 +25,16 @@ const VALORES_INICIALES = {
 
 function RegistrarPersona() {
   const navigate = useNavigate();
+  const notificar = useToast();
 
   async function alGuardar(datosPersona) {
     const personaCreada = await crearPersona(datosPersona);
+    notificar(`${personaCreada.FirstName} ${personaCreada.LastName} fue registrado.`);
     navigate(`/personas/${personaCreada.BusinessEntityID}`, { replace: true });
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6">
-      <h1 className="mb-4 text-xl font-semibold text-gray-800">Registrar persona</h1>
-
+    <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
       <FormularioPersona
         valoresIniciales={VALORES_INICIALES}
         alGuardar={alGuardar}

@@ -123,6 +123,33 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* Animaciones de los componentes de experiencia: responden a una acción
+   de la persona (abrir un modal, recibir una confirmación), nunca
+   ocurren solas. Ambas quedan neutralizadas por la regla de
+   prefers-reduced-motion de más abajo (transition/animation-duration a
+   0.01ms), así que no hace falta duplicar esa condición acá. */
+@keyframes aparecer {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes entrar-toast {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Respeta la preferencia de movimiento reducido del sistema operativo:
    ninguna transición ni animación debe imponerse sobre esta elección. */
 @media (prefers-reduced-motion: reduce) {

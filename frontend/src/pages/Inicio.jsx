@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import clienteApi from '../api/client';
 import { ETIQUETAS_TIPO } from '../constants/tiposPersona';
+import Esqueleto from '../components/Esqueleto';
 
 const formatearNumero = (numero) => numero.toLocaleString('es-AR');
 
@@ -49,7 +50,17 @@ function Inicio() {
   }, []);
 
   if (cargando) {
-    return <div className="mx-auto max-w-4xl px-6 py-10 text-sm text-texto-secundario">Cargando...</div>;
+    return (
+      <div className="mx-auto max-w-4xl px-6 py-10" aria-hidden="true">
+        <Esqueleto className="h-24 w-72" />
+        <Esqueleto className="mt-8 h-8 w-full" />
+        <div className="mt-4 flex gap-6">
+          <Esqueleto className="h-4 w-32" />
+          <Esqueleto className="h-4 w-32" />
+          <Esqueleto className="h-4 w-32" />
+        </div>
+      </div>
+    );
   }
 
   if (error) {

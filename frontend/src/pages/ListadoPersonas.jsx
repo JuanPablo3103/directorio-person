@@ -7,10 +7,13 @@
 // izquierda, el mismo lenguaje que ya usa el riel de navegación para
 // indicar posición.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { listarPersonas } from '../api/personas.api';
 import { ETIQUETAS_TIPO, OPCIONES_TIPO } from '../constants/tiposPersona';
+import Esqueleto from '../components/Esqueleto';
+
+const FILAS_ESQUELETO = Array.from({ length: 8 }, (_, indice) => indice);
 
 const LIMITE = 20;
 
@@ -32,6 +35,27 @@ function ListadoPersonas() {
   const [totalPaginas, setTotalPaginas] = useState(0);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
+
+  const inputBusquedaRef = useRef(null);
+  const [buscarEnfocado, setBuscarEnfocado] = useState(false);
+
+  // Atajo "/" para saltar directo a la búsqueda, sin tocar el mouse.
+  // Se ignora si la persona ya está escribiendo en cualquier campo (para
+  // no robarle una "/" real de un correo, una dirección, etc.) o si hay
+  // una tecla modificadora de por medio (para no pisar atajos del navegador).
+  useEffect(() => {
+    function manejarTecla(evento) {
+      const enUnCampo = ['INPUT', 'TEXTAREA', 'SELECT'].includes(evento.target.tagName);
+
+      if (evento.key === '/' && !enUnCampo && !evento.metaKey && !evento.ctrlKey && !evento.altKey) {
+        evento.preventDefault();
+        inputBusquedaRef.current?.focus();
+      }
+    }
+
+    window.addEventListener('keydown', manejarTecla);
+    return () => window.removeEventListener('keydown', manejarTecla);
+  }, []);
 
   // Espera 400 ms sin que el usuario escriba antes de "confirmar" el
   // término de búsqueda y volver a la página 1. Evita una petición por
@@ -95,13 +119,28 @@ function ListadoPersonas() {
   const enUltimaPagina = totalPaginas === 0 || pagina >= totalPaginas;
 
   const campoBusqueda = (
-    <input
-      type="text"
-      value={buscarInput}
-      onChange={(evento) => setBuscarInput(evento.target.value)}
-      placeholder="Buscar por nombre o apellido"
-      className="w-full max-w-xs rounded-[var(--radius-control)] border border-borde bg-hoja px-3 py-2 text-sm text-texto outline-none placeholder:text-texto-secundario focus-visible:ring-2 focus-visible:ring-acento"
-    />
+    <div className="relative w-full max-w-xs">
+      <input
+        ref={inputBusquedaRef}
+        type="text"
+        value={buscarInput}
+        onChange={(evento) => setBuscarInput(evento.target.value)}
+        onFocus={() => setBuscarEnfocado(true)}
+        onBlur={() => setBuscarEnfocado(false)}
+        placeholder="Buscar por nombre o apellido"
+        className="w-full rounded-[var(--radius-control)] border border-borde bg-hoja px-3 py-2 pr-8 text-sm text-texto outline-none placeholder:text-texto-secundario focus-visible:ring-2 focus-visible:ring-acento"
+      />
+      {/* Pista del atajo: desaparece en cuanto la persona empieza a
+          escribir o enfoca el campo por su cuenta (mouse o Tab). */}
+      {!buscarEnfocado && !buscarInput && (
+        <kbd
+          aria-hidden="true"
+          className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 rounded border border-borde px-1.5 py-0.5 font-mono text-xs text-texto-secundario"
+        >
+          /
+        </kbd>
+      )}
+    </div>
   );
 
   const selectorTipo = (
@@ -135,7 +174,18 @@ function ListadoPersonas() {
         </button>
       </div>
 
-      {cargando && <p className="py-10 text-center text-sm text-texto-secundario">Cargando...</p>}
+      {cargando && (
+        <div aria-hidden="true">
+          {FILAS_ESQUELETO.map((indice) => (
+            <div key={indice} className="flex items-center gap-4 border-b border-borde py-3 last:border-0">
+              <Esqueleto className="h-4 w-32 sm:w-40" />
+              <Esqueleto className="hidden h-4 w-20 sm:block" />
+              <Esqueleto className="hidden h-4 w-48 md:block" />
+              <Esqueleto className="ml-auto h-4 w-8" />
+            </div>
+          ))}
+        </div>
+      )}
 
       {!cargando && error && <p className="py-10 text-center text-sm text-destructivo">{error}</p>}
 

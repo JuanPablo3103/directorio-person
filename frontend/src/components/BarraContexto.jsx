@@ -12,14 +12,16 @@ const ALTO_BARRA = 56;
 
 // Deriva el título desde la ruta en vez de que cada página lo pase como
 // prop: así ninguna pantalla nueva puede "olvidarse" de ponerlo, y el
-// título siempre coincide con lo que dice la URL.
+// título siempre coincide con lo que dice la URL. El valor por defecto es
+// lo que ve la ruta comodín "*" (NoEncontrado, ver App.jsx): cualquier
+// path que no matchee ninguna ruta real cae acá.
 function tituloDesdeRuta(pathname) {
   if (pathname === '/') return 'Inicio';
   if (pathname === '/personas') return 'Personas';
   if (pathname === '/personas/nueva') return 'Registrar persona';
   if (/^\/personas\/\d+\/editar$/.test(pathname)) return 'Editar persona';
   if (/^\/personas\/\d+$/.test(pathname)) return 'Detalle de persona';
-  return 'Directorio Person';
+  return 'Página no encontrada';
 }
 
 function BarraContexto({ onAbrirMenu }) {

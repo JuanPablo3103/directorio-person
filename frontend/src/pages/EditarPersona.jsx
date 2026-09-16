@@ -2,11 +2,16 @@
 // Carga los datos actuales, se los pasa como valores iniciales a
 // FormularioPersona (compartido con RegistrarPersona) y al guardar llama
 // al PUT correspondiente.
+//
+// Sin <h1> propio: la barra de contexto ya muestra "Editar persona" para
+// esta ruta (ver tituloDesdeRuta en BarraContexto.jsx).
 
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { obtenerPersonaPorId, actualizarPersona } from '../api/personas.api';
 import FormularioPersona from '../components/FormularioPersona';
+import { useToast } from '../context/ToastContext';
+import Esqueleto from '../components/Esqueleto';
 
 // Convierte los datos que devuelve el backend (con null en los campos
 // opcionales vacíos) al formato que espera FormularioPersona (string vacío,
@@ -26,6 +31,7 @@ function aValoresIniciales(persona) {
 function EditarPersona() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const notificar = useToast();
 
   const [valoresIniciales, setValoresIniciales] = useState(null);
   const [cargando, setCargando] = useState(true);
@@ -69,32 +75,38 @@ function EditarPersona() {
 
   async function alGuardar(datosPersona) {
     await actualizarPersona(id, datosPersona);
+    notificar('Los cambios se guardaron.');
     navigate(`/personas/${id}`, { replace: true });
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6">
-      <h1 className="mb-4 text-xl font-semibold text-gray-800">Editar persona</h1>
-
+    <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6">
       {cargando && (
-        <div className="rounded-lg bg-white p-8 text-center text-gray-500 shadow-md">
-          Cargando...
+        <div className="space-y-5" aria-hidden="true">
+          <Esqueleto className="h-9 w-full" />
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Esqueleto className="h-9 w-full" />
+            <Esqueleto className="h-9 w-full" />
+          </div>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Esqueleto className="h-9 w-full" />
+            <Esqueleto className="h-9 w-full" />
+          </div>
+          <Esqueleto className="h-9 w-full" />
         </div>
       )}
 
       {!cargando && noEncontrada && (
-        <div className="rounded-lg bg-white p-8 text-center shadow-md">
-          <p className="text-lg font-medium text-gray-800">Persona no encontrada</p>
-          <p className="mt-1 text-sm text-gray-500">
+        <div className="py-16 text-center">
+          <p className="text-lg font-medium text-texto">Persona no encontrada</p>
+          <p className="mt-1 text-sm text-texto-secundario">
             No existe ninguna persona con el identificador {id}.
           </p>
         </div>
       )}
 
       {!cargando && !noEncontrada && error && (
-        <div className="rounded-lg bg-white p-8 text-center text-red-600 shadow-md">
-          {error}
-        </div>
+        <p className="py-16 text-center text-sm text-destructivo">{error}</p>
       )}
 
       {!cargando && !noEncontrada && !error && valoresIniciales && (

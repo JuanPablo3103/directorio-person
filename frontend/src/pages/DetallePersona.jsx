@@ -6,10 +6,15 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { obtenerPersonaPorId, eliminarPersona } from '../api/personas.api';
 import clienteApi from '../api/client';
 import { ETIQUETAS_TIPO } from '../constants/tiposPersona';
+import { useConfirm } from '../context/ConfirmContext';
+import { useToast } from '../context/ToastContext';
+import Esqueleto from '../components/Esqueleto';
 
 function DetallePersona() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const confirmar = useConfirm();
+  const notificar = useToast();
 
   const [persona, setPersona] = useState(null);
   const [cargando, setCargando] = useState(true);
@@ -154,6 +159,7 @@ function DetallePersona() {
 
       setCorreos((correosActuales) => [...correosActuales, respuesta.data]);
       setNuevoCorreo('');
+      notificar('Correo agregado.');
     } catch (errorPeticion) {
       if (errorPeticion.response?.status === 400 || errorPeticion.response?.status === 409) {
         setErrorAgregarCorreo(
@@ -170,7 +176,12 @@ function DetallePersona() {
   }
 
   async function manejarEliminarCorreo(correo) {
-    const confirmado = window.confirm('¿Eliminar este correo?');
+    const confirmado = await confirmar({
+      titulo: '¿Eliminar este correo?',
+      descripcion: correo.correo,
+      textoConfirmar: 'Eliminar',
+      destructivo: true
+    });
 
     if (!confirmado) {
       return;
@@ -184,6 +195,7 @@ function DetallePersona() {
       setCorreos((correosActuales) =>
         correosActuales.filter((c) => c.emailAddressId !== correo.emailAddressId)
       );
+      notificar('Correo eliminado.');
     } catch {
       setErrorCorreos('No se pudo eliminar el correo. Intenta nuevamente.');
     } finally {
@@ -273,6 +285,7 @@ function DetallePersona() {
       setTelefonos((telefonosActuales) => [...telefonosActuales, respuesta.data]);
       setNuevoNumero('');
       setNuevoTipoId('');
+      notificar('Teléfono agregado.');
     } catch (errorPeticion) {
       if (errorPeticion.response?.status === 400 || errorPeticion.response?.status === 409) {
         setErrorAgregarTelefono(
@@ -289,7 +302,12 @@ function DetallePersona() {
   }
 
   async function manejarEliminarTelefono(telefono) {
-    const confirmado = window.confirm('¿Eliminar este teléfono?');
+    const confirmado = await confirmar({
+      titulo: '¿Eliminar este teléfono?',
+      descripcion: `${telefono.numero} (${telefono.tipo})`,
+      textoConfirmar: 'Eliminar',
+      destructivo: true
+    });
 
     if (!confirmado) {
       return;
@@ -305,6 +323,7 @@ function DetallePersona() {
         params: { numero: telefono.numero, tipoId: telefono.tipoId }
       });
 
+      notificar('Teléfono eliminado.');
       setTelefonos((telefonosActuales) =>
         telefonosActuales.filter(
           (t) => !(t.numero === telefono.numero && t.tipoId === telefono.tipoId)
@@ -441,6 +460,7 @@ function DetallePersona() {
         postalCode: '',
         addressTypeId: ''
       });
+      notificar('Dirección agregada.');
     } catch (errorPeticion) {
       if (errorPeticion.response?.status === 400 || errorPeticion.response?.status === 409) {
         setErrorAgregarDireccion(
@@ -457,7 +477,12 @@ function DetallePersona() {
   }
 
   async function manejarEliminarDireccion(direccion) {
-    const confirmado = window.confirm('¿Eliminar esta dirección?');
+    const confirmado = await confirmar({
+      titulo: '¿Eliminar esta dirección?',
+      descripcion: `${direccion.tipoDireccion}: ${direccion.linea1}`,
+      textoConfirmar: 'Eliminar',
+      destructivo: true
+    });
 
     if (!confirmado) {
       return;
@@ -471,6 +496,7 @@ function DetallePersona() {
       setDirecciones((direccionesActuales) =>
         direccionesActuales.filter((d) => d.addressId !== direccion.addressId)
       );
+      notificar('Dirección eliminada.');
     } catch {
       setErrorDirecciones('No se pudo eliminar la dirección. Intenta nuevamente.');
     } finally {
@@ -479,9 +505,12 @@ function DetallePersona() {
   }
 
   async function manejarEliminar() {
-    const confirmado = window.confirm(
-      `¿Eliminar a ${persona.nombreCompleto}? Esta acción no se puede deshacer.`
-    );
+    const confirmado = await confirmar({
+      titulo: `¿Eliminar a ${persona.nombreCompleto}?`,
+      descripcion: 'Esta acción no se puede deshacer.',
+      textoConfirmar: 'Eliminar',
+      destructivo: true
+    });
 
     if (!confirmado) {
       return;
@@ -492,6 +521,7 @@ function DetallePersona() {
 
     try {
       await eliminarPersona(id);
+      notificar(`${persona.nombreCompleto} fue eliminado.`);
       navigate('/personas', { replace: true });
     } catch (errorPeticion) {
       if (errorPeticion.response?.status === 404) {
@@ -517,367 +547,392 @@ function DetallePersona() {
     }
   }
 
+  // Clases repetidas de los campos de formulario de las tres secciones
+  // (correos, teléfonos, direcciones): mismos tokens que Login y Listado.
+  const claseCampo =
+    'rounded-[var(--radius-control)] border border-borde bg-hoja px-3 py-1.5 text-sm text-texto outline-none placeholder:text-texto-secundario focus-visible:ring-2 focus-visible:ring-acento disabled:opacity-60';
+  const claseBotonSecundario =
+    'rounded-[var(--radius-control)] border border-borde px-3 py-1.5 text-sm font-medium text-texto outline-none hover:bg-hoja focus-visible:ring-2 focus-visible:ring-acento disabled:cursor-not-allowed disabled:opacity-60';
+  const claseEliminarChico =
+    'text-xs font-medium text-destructivo outline-none hover:opacity-70 focus-visible:ring-2 focus-visible:ring-acento disabled:cursor-not-allowed disabled:opacity-60';
+
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6">
-        <div className="flex items-center justify-between">
-          {/* Siempre visible, independientemente del estado de la carga */}
-          <Link to="/personas" className="inline-block text-sm text-gray-600 hover:text-gray-800">
-            ← Volver al listado
-          </Link>
-
-          {!cargando && !noEncontrada && !error && persona && (
-            <div className="flex gap-2">
-              <Link
-                to={`/personas/${id}/editar`}
-                className="rounded-md bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
-              >
-                Editar
-              </Link>
-              <button
-                type="button"
-                onClick={manejarEliminar}
-                disabled={eliminando}
-                className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {eliminando ? 'Eliminando...' : 'Eliminar'}
-              </button>
-            </div>
-          )}
-        </div>
-
-        {errorEliminar && (
-          <p
-            className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700"
-            role="alert"
-          >
-            {errorEliminar}
-          </p>
-        )}
-
-        {cargando && (
-          <div className="mt-6 rounded-lg bg-white p-8 text-center text-gray-500 shadow-md">
-            Cargando...
-          </div>
-        )}
-
-        {!cargando && noEncontrada && (
-          <div className="mt-6 rounded-lg bg-white p-8 text-center shadow-md">
-            <p className="text-lg font-medium text-gray-800">Persona no encontrada</p>
-            <p className="mt-1 text-sm text-gray-500">
-              No existe ninguna persona con el identificador {id}.
-            </p>
-            <Link
-              to="/personas"
-              className="mt-4 inline-block rounded-md bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
-            >
-              Volver al listado
-            </Link>
-          </div>
-        )}
-
-        {!cargando && !noEncontrada && error && (
-          <div className="mt-6 rounded-lg bg-white p-8 text-center text-red-600 shadow-md">
-            {error}
-          </div>
-        )}
+    <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* Siempre visible, independientemente del estado de la carga */}
+        <Link
+          to="/personas"
+          className="rounded-[var(--radius-control)] text-sm text-texto-secundario outline-none hover:text-texto focus-visible:ring-2 focus-visible:ring-acento"
+        >
+          ← Volver al listado
+        </Link>
 
         {!cargando && !noEncontrada && !error && persona && (
-          <div className="mt-6 space-y-4">
-            {/* 1. Datos de la persona */}
-            <section className="rounded-lg bg-white p-6 shadow-md">
-              <h2 className="text-xl font-semibold text-gray-800">{persona.nombreCompleto}</h2>
-              <dl className="mt-3 space-y-1 text-sm">
-                <div className="flex gap-2">
-                  <dt className="text-gray-500">Tipo:</dt>
-                  <dd className="text-gray-800">
-                    {ETIQUETAS_TIPO[persona.PersonType] ?? persona.PersonType}
-                  </dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="text-gray-500">Identificador:</dt>
-                  <dd className="text-gray-800">{persona.BusinessEntityID}</dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="text-gray-500">Acepta promociones por correo:</dt>
-                  <dd className="text-gray-800">{persona.EmailPromotion > 0 ? 'Sí' : 'No'}</dd>
-                </div>
-              </dl>
-            </section>
+          <div className="flex gap-2">
+            <Link to={`/personas/${id}/editar`} className={claseBotonSecundario}>
+              Editar
+            </Link>
+            <button
+              type="button"
+              onClick={manejarEliminar}
+              disabled={eliminando}
+              className="rounded-[var(--radius-control)] border border-destructivo px-3 py-1.5 text-sm font-medium text-destructivo outline-none hover:bg-destructivo hover:text-papel focus-visible:ring-2 focus-visible:ring-acento disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {eliminando ? 'Eliminando...' : 'Eliminar'}
+            </button>
+          </div>
+        )}
+      </div>
 
-            {/* 2. Correos electrónicos */}
-            <section className="rounded-lg bg-white p-6 shadow-md">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-                Correos electrónicos
-              </h3>
+      {errorEliminar && (
+        <p className="mt-4 border-l-2 border-destructivo py-1 pl-3 text-sm text-destructivo" role="alert">
+          {errorEliminar}
+        </p>
+      )}
 
-              {cargandoCorreos ? (
-                <p className="mt-2 text-sm text-gray-500">Cargando correos...</p>
-              ) : (
-                <>
-                  {errorCorreos && (
-                    <p className="mt-2 text-sm text-red-600" role="alert">
-                      {errorCorreos}
-                    </p>
-                  )}
+      {cargando && (
+        <div className="mt-6" aria-hidden="true">
+          <Esqueleto className="h-8 w-64" />
+          <div className="mt-4 flex gap-8">
+            <Esqueleto className="h-9 w-20" />
+            <Esqueleto className="h-9 w-20" />
+            <Esqueleto className="h-9 w-32" />
+          </div>
+          <div className="mt-8 space-y-3 border-t border-borde pt-6">
+            <Esqueleto className="h-4 w-40" />
+            <Esqueleto className="h-4 w-full max-w-md" />
+            <Esqueleto className="h-4 w-full max-w-sm" />
+          </div>
+        </div>
+      )}
 
-                  {correos.length === 0 ? (
-                    <p className="mt-2 text-sm text-gray-500">No tiene correos registrados.</p>
-                  ) : (
-                    <ul className="mt-2 space-y-1 text-sm text-gray-800">
-                      {correos.map((correo) => (
-                        <li key={correo.emailAddressId} className="flex items-center justify-between gap-2">
-                          <span>{correo.correo}</span>
-                          <button
-                            type="button"
-                            onClick={() => manejarEliminarCorreo(correo)}
-                            disabled={eliminandoCorreoId === correo.emailAddressId}
-                            className="text-xs font-medium text-red-600 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {eliminandoCorreoId === correo.emailAddressId ? 'Eliminando...' : 'Eliminar'}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+      {!cargando && noEncontrada && (
+        <div className="py-16 text-center">
+          <p className="text-lg font-medium text-texto">Persona no encontrada</p>
+          <p className="mt-1 text-sm text-texto-secundario">
+            No existe ninguna persona con el identificador {id}.
+          </p>
+          <Link
+            to="/personas"
+            className="mt-4 inline-block rounded-[var(--radius-control)] bg-acento px-4 py-2 text-sm font-medium text-acento-texto outline-none hover:brightness-95 focus-visible:ring-2 focus-visible:ring-acento focus-visible:ring-offset-2 focus-visible:ring-offset-superficie"
+          >
+            Volver al listado
+          </Link>
+        </div>
+      )}
 
-                  <form onSubmit={manejarAgregarCorreo} className="mt-3 flex items-start gap-2">
-                    <div className="flex-1">
-                      <input
-                        type="text"
-                        value={nuevoCorreo}
-                        onChange={(evento) => setNuevoCorreo(evento.target.value)}
-                        placeholder="nuevo.correo@ejemplo.com"
-                        className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
-                      />
-                      {errorAgregarCorreo && (
-                        <p className="mt-1 text-sm text-red-600" role="alert">
-                          {errorAgregarCorreo}
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      type="submit"
-                      disabled={agregandoCorreo}
-                      className="rounded-md bg-gray-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {agregandoCorreo ? 'Agregando...' : 'Agregar'}
-                    </button>
-                  </form>
-                </>
-              )}
-            </section>
+      {!cargando && !noEncontrada && error && (
+        <p className="py-16 text-center text-sm text-destructivo">{error}</p>
+      )}
 
-            {/* 3. Teléfonos */}
-            <section className="rounded-lg bg-white p-6 shadow-md">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-                Teléfonos
-              </h3>
+      {!cargando && !noEncontrada && !error && persona && (
+        <div className="mt-6">
+          {/* 1. Datos de la persona: la única jerarquía tipográfica fuerte
+              de esta pantalla es el nombre. Todo lo demás son hechos
+              secundarios, mostrados como pares etiqueta/valor separados
+              (no una cadena unida con puntos medios). */}
+          <section>
+            <h2 className="font-display text-[28px] leading-tight font-semibold text-texto">
+              {persona.nombreCompleto}
+            </h2>
 
-              {cargandoTelefonos ? (
-                <p className="mt-2 text-sm text-gray-500">Cargando teléfonos...</p>
-              ) : (
-                <>
-                  {errorTelefonos && (
-                    <p className="mt-2 text-sm text-red-600" role="alert">
-                      {errorTelefonos}
-                    </p>
-                  )}
+            <div className="mt-3 flex flex-wrap gap-x-8 gap-y-3">
+              <div>
+                <p className="text-xs text-texto-secundario">Tipo</p>
+                <p className="text-sm text-texto">
+                  {ETIQUETAS_TIPO[persona.PersonType] ?? persona.PersonType}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-texto-secundario">Identificador</p>
+                <p className="font-mono text-sm tabular-nums text-texto">
+                  {persona.BusinessEntityID}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-texto-secundario">Promociones por correo</p>
+                <p className="text-sm text-texto">{persona.EmailPromotion > 0 ? 'Sí' : 'No'}</p>
+              </div>
+            </div>
+          </section>
 
-                  {telefonos.length === 0 ? (
-                    <p className="mt-2 text-sm text-gray-500">No tiene teléfonos registrados.</p>
-                  ) : (
-                    <ul className="mt-2 space-y-1 text-sm text-gray-800">
-                      {telefonos.map((telefono) => {
-                        const clave = `${telefono.numero}-${telefono.tipoId}`;
-                        return (
-                          <li key={clave} className="flex items-center justify-between gap-2">
-                            <span>
-                              {telefono.numero}{' '}
-                              <span className="text-gray-500">({telefono.tipo})</span>
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => manejarEliminarTelefono(telefono)}
-                              disabled={eliminandoTelefonoClave === clave}
-                              className="text-xs font-medium text-red-600 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {eliminandoTelefonoClave === clave ? 'Eliminando...' : 'Eliminar'}
-                            </button>
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
+          {/* 2. Correos electrónicos */}
+          <section className="mt-8 border-t border-borde pt-6">
+            <h3 className="text-[15px] font-semibold text-texto">Correos electrónicos</h3>
 
-                  <form onSubmit={manejarAgregarTelefono} className="mt-3 flex flex-wrap items-start gap-2">
+            {cargandoCorreos ? (
+              <div className="mt-3 space-y-2" aria-hidden="true">
+                <Esqueleto className="h-5 w-48" />
+                <Esqueleto className="h-9 w-full max-w-md" />
+              </div>
+            ) : (
+              <>
+                {errorCorreos && (
+                  <p className="mt-3 text-sm text-destructivo" role="alert">
+                    {errorCorreos}
+                  </p>
+                )}
+
+                {correos.length === 0 ? (
+                  <p className="mt-3 text-sm text-texto-secundario">
+                    Todavía no tiene correos. Agregá el primero abajo.
+                  </p>
+                ) : (
+                  <ul className="mt-3">
+                    {correos.map((correo) => (
+                      <li
+                        key={correo.emailAddressId}
+                        className="flex items-center justify-between gap-2 border-b border-borde py-2 text-sm last:border-0"
+                      >
+                        <span className="text-texto">{correo.correo}</span>
+                        <button
+                          type="button"
+                          onClick={() => manejarEliminarCorreo(correo)}
+                          disabled={eliminandoCorreoId === correo.emailAddressId}
+                          className={claseEliminarChico}
+                        >
+                          {eliminandoCorreoId === correo.emailAddressId ? 'Eliminando...' : 'Eliminar'}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <form onSubmit={manejarAgregarCorreo} className="mt-4 flex items-start gap-2">
+                  <div className="flex-1">
                     <input
                       type="text"
-                      value={nuevoNumero}
-                      onChange={(evento) => setNuevoNumero(evento.target.value)}
-                      placeholder="Número de teléfono"
-                      className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+                      value={nuevoCorreo}
+                      onChange={(evento) => setNuevoCorreo(evento.target.value)}
+                      placeholder="nuevo.correo@ejemplo.com"
+                      className={`w-full ${claseCampo}`}
+                    />
+                    {errorAgregarCorreo && (
+                      <p className="mt-1 text-sm text-destructivo" role="alert">
+                        {errorAgregarCorreo}
+                      </p>
+                    )}
+                  </div>
+                  <button type="submit" disabled={agregandoCorreo} className={claseBotonSecundario}>
+                    {agregandoCorreo ? 'Agregando...' : 'Agregar'}
+                  </button>
+                </form>
+              </>
+            )}
+          </section>
+
+          {/* 3. Teléfonos */}
+          <section className="mt-8 border-t border-borde pt-6">
+            <h3 className="text-[15px] font-semibold text-texto">Teléfonos</h3>
+
+            {cargandoTelefonos ? (
+              <div className="mt-3 space-y-2" aria-hidden="true">
+                <Esqueleto className="h-5 w-40" />
+                <Esqueleto className="h-9 w-full max-w-md" />
+              </div>
+            ) : (
+              <>
+                {errorTelefonos && (
+                  <p className="mt-3 text-sm text-destructivo" role="alert">
+                    {errorTelefonos}
+                  </p>
+                )}
+
+                {telefonos.length === 0 ? (
+                  <p className="mt-3 text-sm text-texto-secundario">
+                    Todavía no tiene teléfonos. Agregá el primero abajo.
+                  </p>
+                ) : (
+                  <ul className="mt-3">
+                    {telefonos.map((telefono) => {
+                      const clave = `${telefono.numero}-${telefono.tipoId}`;
+                      return (
+                        <li
+                          key={clave}
+                          className="flex items-center justify-between gap-2 border-b border-borde py-2 text-sm last:border-0"
+                        >
+                          <span className="text-texto">
+                            {telefono.numero}{' '}
+                            <span className="text-texto-secundario">({telefono.tipo})</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => manejarEliminarTelefono(telefono)}
+                            disabled={eliminandoTelefonoClave === clave}
+                            className={claseEliminarChico}
+                          >
+                            {eliminandoTelefonoClave === clave ? 'Eliminando...' : 'Eliminar'}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+
+                <form onSubmit={manejarAgregarTelefono} className="mt-4 flex flex-wrap items-start gap-2">
+                  <input
+                    type="text"
+                    value={nuevoNumero}
+                    onChange={(evento) => setNuevoNumero(evento.target.value)}
+                    placeholder="Número de teléfono"
+                    className={`flex-1 ${claseCampo}`}
+                  />
+                  <select
+                    value={nuevoTipoId}
+                    onChange={(evento) => setNuevoTipoId(evento.target.value)}
+                    disabled={cargandoTiposTelefono}
+                    className={claseCampo}
+                  >
+                    <option value="">Selecciona un tipo</option>
+                    {tiposTelefono.map((tipo) => (
+                      <option key={tipo.PhoneNumberTypeID} value={tipo.PhoneNumberTypeID}>
+                        {tipo.Name}
+                      </option>
+                    ))}
+                  </select>
+                  <button type="submit" disabled={agregandoTelefono} className={claseBotonSecundario}>
+                    {agregandoTelefono ? 'Agregando...' : 'Agregar'}
+                  </button>
+                  {errorAgregarTelefono && (
+                    <p className="w-full text-sm text-destructivo" role="alert">
+                      {errorAgregarTelefono}
+                    </p>
+                  )}
+                </form>
+              </>
+            )}
+          </section>
+
+          {/* 4. Direcciones */}
+          <section className="mt-8 border-t border-borde pt-6">
+            <h3 className="text-[15px] font-semibold text-texto">Direcciones</h3>
+
+            {cargandoDirecciones ? (
+              <div className="mt-3 space-y-2" aria-hidden="true">
+                <Esqueleto className="h-5 w-56" />
+                <Esqueleto className="h-16 w-full max-w-md" />
+              </div>
+            ) : (
+              <>
+                {errorDirecciones && (
+                  <p className="mt-3 text-sm text-destructivo" role="alert">
+                    {errorDirecciones}
+                  </p>
+                )}
+
+                {direcciones.length === 0 ? (
+                  <p className="mt-3 text-sm text-texto-secundario">
+                    Todavía no tiene direcciones. Agregá la primera abajo.
+                  </p>
+                ) : (
+                  <ul className="mt-3">
+                    {direcciones.map((direccion) => (
+                      <li
+                        key={direccion.addressId}
+                        className="border-b border-borde py-3 text-sm last:border-0"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-medium text-texto">{direccion.tipoDireccion}</p>
+                          <button
+                            type="button"
+                            onClick={() => manejarEliminarDireccion(direccion)}
+                            disabled={eliminandoDireccionId === direccion.addressId}
+                            className={claseEliminarChico}
+                          >
+                            {eliminandoDireccionId === direccion.addressId ? 'Eliminando...' : 'Eliminar'}
+                          </button>
+                        </div>
+                        <p className="mt-1 text-texto-secundario">
+                          {direccion.linea1}
+                          {direccion.linea2 ? `, ${direccion.linea2}` : ''}
+                        </p>
+                        <p className="text-texto-secundario">
+                          {direccion.ciudad}, {direccion.estadoProvincia}, {direccion.pais}
+                        </p>
+                        <p className="text-texto-secundario">{direccion.codigoPostal}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                <form onSubmit={manejarAgregarDireccion} className="mt-4 space-y-2">
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <input
+                      type="text"
+                      value={nuevaDireccion.addressLine1}
+                      onChange={(evento) => actualizarCampoDireccion('addressLine1', evento.target.value)}
+                      placeholder="Dirección (línea 1)"
+                      className={claseCampo}
+                    />
+                    <input
+                      type="text"
+                      value={nuevaDireccion.addressLine2}
+                      onChange={(evento) => actualizarCampoDireccion('addressLine2', evento.target.value)}
+                      placeholder="Dirección (línea 2, opcional)"
+                      className={claseCampo}
+                    />
+                  </div>
+
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    <input
+                      type="text"
+                      value={nuevaDireccion.city}
+                      onChange={(evento) => actualizarCampoDireccion('city', evento.target.value)}
+                      placeholder="Ciudad"
+                      className={claseCampo}
                     />
                     <select
-                      value={nuevoTipoId}
-                      onChange={(evento) => setNuevoTipoId(evento.target.value)}
-                      disabled={cargandoTiposTelefono}
-                      className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
+                      value={nuevaDireccion.stateProvinceId}
+                      onChange={(evento) => actualizarCampoDireccion('stateProvinceId', evento.target.value)}
+                      disabled={cargandoEstados}
+                      className={claseCampo}
                     >
-                      <option value="">Selecciona un tipo...</option>
-                      {tiposTelefono.map((tipo) => (
-                        <option key={tipo.PhoneNumberTypeID} value={tipo.PhoneNumberTypeID}>
+                      <option value="">Selecciona un estado/provincia</option>
+                      {estados.map((estado) => (
+                        <option key={estado.StateProvinceID} value={estado.StateProvinceID}>
+                          {estado.Name} ({estado.CountryRegionCode})
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      value={nuevaDireccion.postalCode}
+                      onChange={(evento) => actualizarCampoDireccion('postalCode', evento.target.value)}
+                      placeholder="Código postal"
+                      className={claseCampo}
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      value={nuevaDireccion.addressTypeId}
+                      onChange={(evento) => actualizarCampoDireccion('addressTypeId', evento.target.value)}
+                      disabled={cargandoTiposDireccion}
+                      className={claseCampo}
+                    >
+                      <option value="">Selecciona un tipo</option>
+                      {tiposDireccion.map((tipo) => (
+                        <option key={tipo.AddressTypeID} value={tipo.AddressTypeID}>
                           {tipo.Name}
                         </option>
                       ))}
                     </select>
-                    <button
-                      type="submit"
-                      disabled={agregandoTelefono}
-                      className="rounded-md bg-gray-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {agregandoTelefono ? 'Agregando...' : 'Agregar'}
+                    <button type="submit" disabled={agregandoDireccion} className={claseBotonSecundario}>
+                      {agregandoDireccion ? 'Agregando...' : 'Agregar dirección'}
                     </button>
-                    {errorAgregarTelefono && (
-                      <p className="w-full text-sm text-red-600" role="alert">
-                        {errorAgregarTelefono}
-                      </p>
-                    )}
-                  </form>
-                </>
-              )}
-            </section>
+                  </div>
 
-            {/* 4. Direcciones */}
-            <section className="rounded-lg bg-white p-6 shadow-md">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-                Direcciones
-              </h3>
-
-              {cargandoDirecciones ? (
-                <p className="mt-2 text-sm text-gray-500">Cargando direcciones...</p>
-              ) : (
-                <>
-                  {errorDirecciones && (
-                    <p className="mt-2 text-sm text-red-600" role="alert">
-                      {errorDirecciones}
+                  {errorAgregarDireccion && (
+                    <p className="text-sm text-destructivo" role="alert">
+                      {errorAgregarDireccion}
                     </p>
                   )}
-
-                  {direcciones.length === 0 ? (
-                    <p className="mt-2 text-sm text-gray-500">No tiene direcciones registradas.</p>
-                  ) : (
-                    <ul className="mt-2 space-y-3 text-sm">
-                      {direcciones.map((direccion) => (
-                        <li
-                          key={direccion.addressId}
-                          className="border-b border-gray-100 pb-3 last:border-0 last:pb-0"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="font-medium text-gray-800">{direccion.tipoDireccion}</p>
-                            <button
-                              type="button"
-                              onClick={() => manejarEliminarDireccion(direccion)}
-                              disabled={eliminandoDireccionId === direccion.addressId}
-                              className="text-xs font-medium text-red-600 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-60"
-                            >
-                              {eliminandoDireccionId === direccion.addressId ? 'Eliminando...' : 'Eliminar'}
-                            </button>
-                          </div>
-                          <p className="text-gray-600">
-                            {direccion.linea1}
-                            {direccion.linea2 ? `, ${direccion.linea2}` : ''}
-                          </p>
-                          <p className="text-gray-600">
-                            {direccion.ciudad}, {direccion.estadoProvincia}, {direccion.pais}
-                          </p>
-                          <p className="text-gray-600">{direccion.codigoPostal}</p>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-
-                  <form onSubmit={manejarAgregarDireccion} className="mt-4 space-y-2">
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <input
-                        type="text"
-                        value={nuevaDireccion.addressLine1}
-                        onChange={(evento) => actualizarCampoDireccion('addressLine1', evento.target.value)}
-                        placeholder="Dirección (línea 1)"
-                        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
-                      />
-                      <input
-                        type="text"
-                        value={nuevaDireccion.addressLine2}
-                        onChange={(evento) => actualizarCampoDireccion('addressLine2', evento.target.value)}
-                        placeholder="Dirección (línea 2, opcional)"
-                        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="grid gap-2 sm:grid-cols-3">
-                      <input
-                        type="text"
-                        value={nuevaDireccion.city}
-                        onChange={(evento) => actualizarCampoDireccion('city', evento.target.value)}
-                        placeholder="Ciudad"
-                        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
-                      />
-                      <select
-                        value={nuevaDireccion.stateProvinceId}
-                        onChange={(evento) => actualizarCampoDireccion('stateProvinceId', evento.target.value)}
-                        disabled={cargandoEstados}
-                        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
-                      >
-                        <option value="">Selecciona un estado/provincia...</option>
-                        {estados.map((estado) => (
-                          <option key={estado.StateProvinceID} value={estado.StateProvinceID}>
-                            {estado.Name} ({estado.CountryRegionCode})
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="text"
-                        value={nuevaDireccion.postalCode}
-                        onChange={(evento) => actualizarCampoDireccion('postalCode', evento.target.value)}
-                        placeholder="Código postal"
-                        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
-                      />
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2">
-                      <select
-                        value={nuevaDireccion.addressTypeId}
-                        onChange={(evento) => actualizarCampoDireccion('addressTypeId', evento.target.value)}
-                        disabled={cargandoTiposDireccion}
-                        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
-                      >
-                        <option value="">Selecciona un tipo...</option>
-                        {tiposDireccion.map((tipo) => (
-                          <option key={tipo.AddressTypeID} value={tipo.AddressTypeID}>
-                            {tipo.Name}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        type="submit"
-                        disabled={agregandoDireccion}
-                        className="rounded-md bg-gray-800 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {agregandoDireccion ? 'Agregando...' : 'Agregar dirección'}
-                      </button>
-                    </div>
-
-                    {errorAgregarDireccion && (
-                      <p className="text-sm text-red-600" role="alert">
-                        {errorAgregarDireccion}
-                      </p>
-                    )}
-                  </form>
-                </>
-              )}
-            </section>
-          </div>
-        )}
+                </form>
+              </>
+            )}
+          </section>
+        </div>
+      )}
     </div>
   );
 }
