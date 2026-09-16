@@ -1,0 +1,134 @@
+// Controlador del recurso "personas".
+// Su única responsabilidad es leer la petición HTTP, delegar el trabajo
+// al servicio y devolver la respuesta exitosa. Los errores se pasan al
+// middleware manejadorErrores con next(error); este controlador no
+// construye respuestas de error.
+
+const { validationResult } = require('express-validator');
+const personasService = require('../services/personas.service');
+const { solicitudInvalida, noEncontrado } = require('../utils/errores');
+
+// Acepta únicamente enteros positivos sin signo ni ceros a la izquierda
+// (ej. "12" es válido, "0", "-1", "3.5" y "abc" no lo son).
+const PATRON_ENTERO_POSITIVO = /^[1-9]\d*$/;
+
+// GET /api/personas
+async function listarPersonas(req, res, next) {
+  try {
+    const resultado = await personasService.listarPersonas(req.query);
+    res.status(200).json(resultado);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// GET /api/personas/:id
+async function obtenerPersonaPorId(req, res, next) {
+  const idCrudo = req.params.id;
+
+  if (!PATRON_ENTERO_POSITIVO.test(idCrudo)) {
+    return next(
+      solicitudInvalida('El identificador de la persona debe ser un número entero positivo.')
+    );
+  }
+
+  const id = Number(idCrudo);
+
+  try {
+    const persona = await personasService.obtenerPersonaPorId(id);
+
+    if (!persona) {
+      return next(noEncontrado(`No se encontró ninguna persona con el identificador ${id}.`));
+    }
+
+    res.status(200).json(persona);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// POST /api/personas
+// Las reglas de validación (personType, firstName, etc.) corren antes como
+// middleware en la ruta; acá solo se revisa si quedó algún error.
+async function crearPersona(req, res, next) {
+  const errores = validationResult(req);
+
+  if (!errores.isEmpty()) {
+    const mensaje = errores.array().map((error) => error.msg).join(' ');
+    return next(solicitudInvalida(mensaje));
+  }
+
+  try {
+    const personaCreada = await personasService.crearPersona(req.body);
+    res.status(201).json(personaCreada);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// PUT /api/personas/:id
+// Reutiliza el mismo patrón de validación de id que obtenerPersonaPorId,
+// más las reglas de body de express-validator (las mismas que crearPersona).
+async function actualizarPersona(req, res, next) {
+  const idCrudo = req.params.id;
+
+  if (!PATRON_ENTERO_POSITIVO.test(idCrudo)) {
+    return next(
+      solicitudInvalida('El identificador de la persona debe ser un número entero positivo.')
+    );
+  }
+
+  const errores = validationResult(req);
+
+  if (!errores.isEmpty()) {
+    const mensaje = errores.array().map((error) => error.msg).join(' ');
+    return next(solicitudInvalida(mensaje));
+  }
+
+  const id = Number(idCrudo);
+
+  try {
+    const personaActualizada = await personasService.actualizarPersona(id, req.body);
+
+    if (!personaActualizada) {
+      return next(noEncontrado(`No se encontró ninguna persona con el identificador ${id}.`));
+    }
+
+    res.status(200).json(personaActualizada);
+  } catch (error) {
+    next(error);
+  }
+}
+
+// DELETE /api/personas/:id
+async function eliminarPersona(req, res, next) {
+  const idCrudo = req.params.id;
+
+  if (!PATRON_ENTERO_POSITIVO.test(idCrudo)) {
+    return next(
+      solicitudInvalida('El identificador de la persona debe ser un número entero positivo.')
+    );
+  }
+
+  const id = Number(idCrudo);
+
+  try {
+    const eliminada = await personasService.eliminarPersona(id);
+
+    if (!eliminada) {
+      return next(noEncontrado(`No se encontró ninguna persona con el identificador ${id}.`));
+    }
+
+    res.status(200).json({ mensaje: `La persona ${id} se eliminó correctamente.` });
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = {
+  listarPersonas,
+  obtenerPersonaPorId,
+  crearPersona,
+  actualizarPersona,
+  eliminarPersona
+};
