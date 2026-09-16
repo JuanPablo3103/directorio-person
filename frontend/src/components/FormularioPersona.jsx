@@ -1,15 +1,9 @@
 // Formulario compartido para crear y editar una persona (HU-05 y HU-06).
-// No sabe si está creando o editando: recibe los valores iniciales y una
-// función alGuardar que hace la llamada a la API correspondiente y decide
-// a dónde navegar. Este componente solo se ocupa del estado del formulario,
-// la normalización de datos antes de enviarlos y el reparto de errores del
-// backend a cada campo.
 
 import { useState } from 'react';
+import { UserCog, Contact2, Mail, Save, X } from 'lucide-react';
 import { ETIQUETAS_TIPO } from '../constants/tiposPersona';
 
-// Opciones del selector de tipo, derivadas del mismo diccionario que usan
-// el listado y el detalle (sin la entrada "Todos", que no aplica acá).
 const OPCIONES_TIPO_PERSONA = Object.entries(ETIQUETAS_TIPO).map(([valor, etiqueta]) => ({
   valor,
   etiqueta
@@ -21,10 +15,6 @@ const OPCIONES_EMAIL_PROMOTION = [
   { valor: 2, etiqueta: 'AdventureWorks y socios' }
 ];
 
-// Nombres de campo que el backend puede mencionar entre paréntesis dentro
-// de cada mensaje de validación (ej. "El nombre (firstName) es
-// obligatorio."). Se usan para repartir el mensaje general de un 400 en
-// el campo correspondiente.
 const CAMPOS_VALIDABLES = [
   'personType',
   'firstName',
@@ -35,10 +25,6 @@ const CAMPOS_VALIDABLES = [
   'emailPromotion'
 ];
 
-// El backend junta todos los mensajes de express-validator en un solo
-// string separado por espacios (ver personas.controller.js). Cada mensaje
-// es una oración completa que termina en punto, así que se puede volver a
-// separar por ". " y asociar cada una a su campo buscando "(nombreCampo)".
 function repartirErroresPorCampo(mensaje) {
   const erroresPorCampo = {};
   const erroresGenerales = [];
@@ -58,13 +44,21 @@ function repartirErroresPorCampo(mensaje) {
   return { erroresPorCampo, erroresGenerales };
 }
 
-// valoresIniciales: { personType, title, firstName, middleName, lastName,
-// suffix, emailPromotion } - todos como string excepto emailPromotion
-// (number), listos para usarse directo como value de cada input.
-// alGuardar: async (datosNormalizados) => void. Si falla, debe rechazar la
-// promesa (dejar que el error de axios suba) para que este componente lo
-// clasifique; si tiene éxito, es responsable de navegar a donde corresponda.
-// alCancelar: () => void, se llama al hacer clic en "Cancelar".
+const CLASES_CAMPO =
+  'mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-base text-slate-800 shadow-sm transition-shadow focus:border-brand-500 focus:outline-none focus:ring-4 focus:ring-brand-500/10';
+
+function Campo({ id, etiqueta, requerido, error, children }) {
+  return (
+    <div>
+      <label htmlFor={id} className="block text-base font-medium text-slate-700">
+        {etiqueta} {requerido && <span className="text-rose-500">*</span>}
+      </label>
+      {children}
+      {error && <p className="mt-2 text-sm text-rose-600">{error}</p>}
+    </div>
+  );
+}
+
 function FormularioPersona({
   valoresIniciales,
   alGuardar,
@@ -123,160 +117,148 @@ function FormularioPersona({
   }
 
   return (
-    <form
-      onSubmit={manejarEnvio}
-      noValidate
-      className="space-y-4 rounded-lg bg-white p-6 shadow-md"
-    >
+    <form onSubmit={manejarEnvio} noValidate className="space-y-7">
       {errorGeneral && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+        <p className="rounded-xl bg-rose-50 px-5 py-4 text-base font-medium text-rose-700" role="alert">
           {errorGeneral}
         </p>
       )}
 
-      <div>
-        <label htmlFor="personType" className="block text-sm font-medium text-gray-700">
-          Tipo de persona *
-        </label>
-        <select
-          id="personType"
-          value={valores.personType}
-          onChange={(evento) => actualizarCampo('personType', evento.target.value)}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
-        >
-          <option value="">Selecciona un tipo...</option>
-          {OPCIONES_TIPO_PERSONA.map((opcion) => (
-            <option key={opcion.valor} value={opcion.valor}>
-              {opcion.etiqueta}
-            </option>
-          ))}
-        </select>
-        {erroresPorCampo.personType && (
-          <p className="mt-1 text-sm text-red-600">{erroresPorCampo.personType}</p>
-        )}
-      </div>
-
-      <div>
-        <label htmlFor="title" className="block text-sm font-medium text-gray-700">
-          Título
-        </label>
-        <input
-          id="title"
-          type="text"
-          value={valores.title}
-          onChange={(evento) => actualizarCampo('title', evento.target.value)}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
-        />
-        {erroresPorCampo.title && (
-          <p className="mt-1 text-sm text-red-600">{erroresPorCampo.title}</p>
-        )}
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-            Nombre *
-          </label>
-          <input
-            id="firstName"
-            type="text"
-            maxLength={50}
-            value={valores.firstName}
-            onChange={(evento) => actualizarCampo('firstName', evento.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
-          />
-          {erroresPorCampo.firstName && (
-            <p className="mt-1 text-sm text-red-600">{erroresPorCampo.firstName}</p>
-          )}
+      {/* Clasificación */}
+      <div className="rounded-2xl border border-slate-100 bg-white p-7 shadow-sm">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+            <UserCog className="h-5.5 w-5.5" />
+          </div>
+          <h3 className="text-lg font-semibold text-slate-800">Clasificación</h3>
         </div>
 
-        <div>
-          <label htmlFor="middleName" className="block text-sm font-medium text-gray-700">
-            Segundo nombre
-          </label>
-          <input
-            id="middleName"
-            type="text"
-            maxLength={50}
-            value={valores.middleName}
-            onChange={(evento) => actualizarCampo('middleName', evento.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
-          />
-          {erroresPorCampo.middleName && (
-            <p className="mt-1 text-sm text-red-600">{erroresPorCampo.middleName}</p>
-          )}
-        </div>
+        <Campo id="personType" etiqueta="Tipo de persona" requerido error={erroresPorCampo.personType}>
+          <select
+            id="personType"
+            value={valores.personType}
+            onChange={(evento) => actualizarCampo('personType', evento.target.value)}
+            className={CLASES_CAMPO}
+          >
+            <option value="">Selecciona un tipo...</option>
+            {OPCIONES_TIPO_PERSONA.map((opcion) => (
+              <option key={opcion.valor} value={opcion.valor}>
+                {opcion.etiqueta}
+              </option>
+            ))}
+          </select>
+        </Campo>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-            Apellido *
-          </label>
-          <input
-            id="lastName"
-            type="text"
-            maxLength={50}
-            value={valores.lastName}
-            onChange={(evento) => actualizarCampo('lastName', evento.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
-          />
-          {erroresPorCampo.lastName && (
-            <p className="mt-1 text-sm text-red-600">{erroresPorCampo.lastName}</p>
-          )}
+      {/* Datos personales */}
+      <div className="rounded-2xl border border-slate-100 bg-white p-7 shadow-sm">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+            <Contact2 className="h-5.5 w-5.5" />
+          </div>
+          <h3 className="text-lg font-semibold text-slate-800">Datos personales</h3>
         </div>
 
-        <div>
-          <label htmlFor="suffix" className="block text-sm font-medium text-gray-700">
-            Sufijo
-          </label>
-          <input
-            id="suffix"
-            type="text"
-            value={valores.suffix}
-            onChange={(evento) => actualizarCampo('suffix', evento.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
-          />
-          {erroresPorCampo.suffix && (
-            <p className="mt-1 text-sm text-red-600">{erroresPorCampo.suffix}</p>
-          )}
+        <div className="space-y-5">
+          <Campo id="title" etiqueta="Título" error={erroresPorCampo.title}>
+            <input
+              id="title"
+              type="text"
+              value={valores.title}
+              onChange={(evento) => actualizarCampo('title', evento.target.value)}
+              className={CLASES_CAMPO}
+            />
+          </Campo>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Campo id="firstName" etiqueta="Nombre" requerido error={erroresPorCampo.firstName}>
+              <input
+                id="firstName"
+                type="text"
+                maxLength={50}
+                value={valores.firstName}
+                onChange={(evento) => actualizarCampo('firstName', evento.target.value)}
+                className={CLASES_CAMPO}
+              />
+            </Campo>
+
+            <Campo id="middleName" etiqueta="Segundo nombre" error={erroresPorCampo.middleName}>
+              <input
+                id="middleName"
+                type="text"
+                maxLength={50}
+                value={valores.middleName}
+                onChange={(evento) => actualizarCampo('middleName', evento.target.value)}
+                className={CLASES_CAMPO}
+              />
+            </Campo>
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <Campo id="lastName" etiqueta="Apellido" requerido error={erroresPorCampo.lastName}>
+              <input
+                id="lastName"
+                type="text"
+                maxLength={50}
+                value={valores.lastName}
+                onChange={(evento) => actualizarCampo('lastName', evento.target.value)}
+                className={CLASES_CAMPO}
+              />
+            </Campo>
+
+            <Campo id="suffix" etiqueta="Sufijo" error={erroresPorCampo.suffix}>
+              <input
+                id="suffix"
+                type="text"
+                value={valores.suffix}
+                onChange={(evento) => actualizarCampo('suffix', evento.target.value)}
+                className={CLASES_CAMPO}
+              />
+            </Campo>
+          </div>
         </div>
       </div>
 
-      <div>
-        <label htmlFor="emailPromotion" className="block text-sm font-medium text-gray-700">
-          Preferencia de promociones
-        </label>
-        <select
-          id="emailPromotion"
-          value={valores.emailPromotion}
-          onChange={(evento) => actualizarCampo('emailPromotion', evento.target.value)}
-          className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:border-gray-500 focus:outline-none"
-        >
-          {OPCIONES_EMAIL_PROMOTION.map((opcion) => (
-            <option key={opcion.valor} value={opcion.valor}>
-              {opcion.etiqueta}
-            </option>
-          ))}
-        </select>
-        {erroresPorCampo.emailPromotion && (
-          <p className="mt-1 text-sm text-red-600">{erroresPorCampo.emailPromotion}</p>
-        )}
+      {/* Preferencias */}
+      <div className="rounded-2xl border border-slate-100 bg-white p-7 shadow-sm">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+            <Mail className="h-5.5 w-5.5" />
+          </div>
+          <h3 className="text-lg font-semibold text-slate-800">Preferencias</h3>
+        </div>
+
+        <Campo id="emailPromotion" etiqueta="Preferencia de promociones" error={erroresPorCampo.emailPromotion}>
+          <select
+            id="emailPromotion"
+            value={valores.emailPromotion}
+            onChange={(evento) => actualizarCampo('emailPromotion', evento.target.value)}
+            className={CLASES_CAMPO}
+          >
+            {OPCIONES_EMAIL_PROMOTION.map((opcion) => (
+              <option key={opcion.valor} value={opcion.valor}>
+                {opcion.etiqueta}
+              </option>
+            ))}
+          </select>
+        </Campo>
       </div>
 
-      <div className="flex justify-end gap-3 pt-2">
+      <div className="flex justify-end gap-4">
         <button
           type="button"
           onClick={alCancelar}
-          className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-6 py-3 text-base font-semibold text-slate-700 hover:bg-slate-50"
         >
+          <X className="h-5 w-5" />
           Cancelar
         </button>
         <button
           type="submit"
           disabled={guardando}
-          className="rounded-md bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-base font-semibold text-white shadow-sm hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
         >
+          <Save className="h-5 w-5" />
           {guardando ? textoGuardando : textoGuardar}
         </button>
       </div>
