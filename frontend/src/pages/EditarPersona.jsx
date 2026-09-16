@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, UserX, UserCog } from 'lucide-react';
 import { obtenerPersonaPorId, actualizarPersona } from '../api/personas.api';
 import Encabezado from '../components/Encabezado';
 import FormularioPersona from '../components/FormularioPersona';
@@ -74,29 +75,49 @@ function EditarPersona() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-slate-50">
       <Encabezado />
 
-      <main className="mx-auto max-w-2xl px-4 py-6">
-        <h1 className="mb-4 text-xl font-semibold text-gray-800">Editar persona</h1>
+      <main className="mx-auto max-w-3xl px-4 py-10 sm:px-8">
+        <button
+          type="button"
+          onClick={() => navigate(`/personas/${id}`)}
+          className="mb-6 inline-flex items-center gap-2 text-base font-medium text-slate-500 hover:text-brand-600"
+        >
+          <ArrowLeft className="h-5 w-5" />
+          Volver al detalle
+        </button>
+
+        <div className="mb-8 flex items-center gap-4">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+            <UserCog className="h-6 w-6" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-slate-800">Editar persona</h1>
+            <p className="mt-1 text-base text-slate-500">
+              Actualiza los datos del contacto y guarda los cambios.
+            </p>
+          </div>
+        </div>
 
         {cargando && (
-          <div className="rounded-lg bg-white p-8 text-center text-gray-500 shadow-md">
+          <div className="rounded-2xl border border-slate-100 bg-white p-14 text-center text-base text-slate-500 shadow-sm">
             Cargando...
           </div>
         )}
 
         {!cargando && noEncontrada && (
-          <div className="rounded-lg bg-white p-8 text-center shadow-md">
-            <p className="text-lg font-medium text-gray-800">Persona no encontrada</p>
-            <p className="mt-1 text-sm text-gray-500">
+          <div className="rounded-2xl border border-slate-100 bg-white p-14 text-center shadow-sm">
+            <UserX className="mx-auto h-14 w-14 text-slate-300" />
+            <p className="mt-4 text-xl font-semibold text-slate-800">Persona no encontrada</p>
+            <p className="mt-2 text-base text-slate-500">
               No existe ninguna persona con el identificador {id}.
             </p>
           </div>
         )}
 
         {!cargando && !noEncontrada && error && (
-          <div className="rounded-lg bg-white p-8 text-center text-red-600 shadow-md">
+          <div className="rounded-2xl border border-slate-100 bg-white p-14 text-center text-base text-rose-600 shadow-sm">
             {error}
           </div>
         )}

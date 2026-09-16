@@ -1,11 +1,42 @@
-// Página de detalle de una persona (ruta "/personas/:id"): datos
-// básicos, correos, teléfonos y direcciones.
+// Página de detalle de una persona (ruta "/personas/:id").
 
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import {
+  ArrowLeft,
+  Pencil,
+  Trash2,
+  Mail,
+  Phone,
+  MapPin,
+  IdCard,
+  BellRing,
+  UserX
+} from 'lucide-react';
 import { obtenerPersonaPorId, eliminarPersona } from '../api/personas.api';
-import { ETIQUETAS_TIPO } from '../constants/tiposPersona';
 import Encabezado from '../components/Encabezado';
+import Avatar from '../components/Avatar';
+import Insignia from '../components/Insignia';
+import SeccionDetalle from '../components/SeccionDetalle';
+
+function EsqueletoDetalle() {
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-slate-100 bg-white p-7 shadow-sm">
+        <div className="flex items-center gap-5">
+          <div className="h-20 w-20 animate-pulse-soft rounded-full bg-slate-200" />
+          <div className="space-y-2">
+            <div className="h-6 w-48 animate-pulse-soft rounded bg-slate-200" />
+            <div className="h-5 w-28 animate-pulse-soft rounded bg-slate-200" />
+          </div>
+        </div>
+      </div>
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="h-28 animate-pulse-soft rounded-2xl border border-slate-100 bg-white shadow-sm" />
+      ))}
+    </div>
+  );
+}
 
 function DetallePersona() {
   const { id } = useParams();
@@ -19,8 +50,6 @@ function DetallePersona() {
   const [eliminando, setEliminando] = useState(false);
   const [errorEliminar, setErrorEliminar] = useState('');
 
-  // Se vuelve a cargar cada vez que cambia el id de la URL (por ejemplo,
-  // si el usuario navega de un detalle a otro sin pasar por el listado).
   useEffect(() => {
     let cancelado = false;
 
@@ -73,9 +102,6 @@ function DetallePersona() {
       navigate('/', { replace: true });
     } catch (errorPeticion) {
       if (errorPeticion.response?.status === 404) {
-        // Ya no existe (por ejemplo, la borraron desde otra sesión):
-        // el resultado que el usuario espera es el mismo que si hubiera
-        // tenido éxito, así que se navega igual al listado.
         navigate('/', { replace: true });
         return;
       }
@@ -96,60 +122,36 @@ function DetallePersona() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-slate-50">
       <Encabezado />
 
-      <main className="mx-auto max-w-3xl px-4 py-6">
-        <div className="flex items-center justify-between">
-          {/* Siempre visible, independientemente del estado de la carga */}
-          <Link to="/" className="inline-block text-sm text-gray-600 hover:text-gray-800">
-            ← Volver al listado
-          </Link>
-
-          {!cargando && !noEncontrada && !error && persona && (
-            <div className="flex gap-2">
-              <Link
-                to={`/personas/${id}/editar`}
-                className="rounded-md bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
-              >
-                Editar
-              </Link>
-              <button
-                type="button"
-                onClick={manejarEliminar}
-                disabled={eliminando}
-                className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {eliminando ? 'Eliminando...' : 'Eliminar'}
-              </button>
-            </div>
-          )}
-        </div>
+      <main className="mx-auto max-w-4xl px-4 py-10 sm:px-8">
+        <Link
+          to="/"
+          className="mb-6 inline-flex items-center gap-2 text-base font-medium text-slate-500 hover:text-brand-600"
+        >
+          <ArrowLeft className="h-5 w-5" />
+          Volver al listado
+        </Link>
 
         {errorEliminar && (
-          <p
-            className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700"
-            role="alert"
-          >
+          <p className="mb-5 rounded-xl bg-rose-50 px-5 py-4 text-base font-medium text-rose-700" role="alert">
             {errorEliminar}
           </p>
         )}
 
-        {cargando && (
-          <div className="mt-6 rounded-lg bg-white p-8 text-center text-gray-500 shadow-md">
-            Cargando...
-          </div>
-        )}
+        {cargando && <EsqueletoDetalle />}
 
         {!cargando && noEncontrada && (
-          <div className="mt-6 rounded-lg bg-white p-8 text-center shadow-md">
-            <p className="text-lg font-medium text-gray-800">Persona no encontrada</p>
-            <p className="mt-1 text-sm text-gray-500">
+          <div className="rounded-2xl border border-slate-100 bg-white p-14 text-center shadow-sm">
+            <UserX className="mx-auto h-14 w-14 text-slate-300" />
+            <p className="mt-4 text-xl font-semibold text-slate-800">Persona no encontrada</p>
+            <p className="mt-2 text-base text-slate-500">
               No existe ninguna persona con el identificador {id}.
             </p>
             <Link
               to="/"
-              className="mt-4 inline-block rounded-md bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+              className="mt-6 inline-block rounded-xl bg-brand-600 px-6 py-3 text-base font-semibold text-white hover:bg-brand-700"
             >
               Volver al listado
             </Link>
@@ -157,97 +159,135 @@ function DetallePersona() {
         )}
 
         {!cargando && !noEncontrada && error && (
-          <div className="mt-6 rounded-lg bg-white p-8 text-center text-red-600 shadow-md">
+          <div className="rounded-2xl border border-slate-100 bg-white p-14 text-center text-base text-rose-600 shadow-sm">
             {error}
           </div>
         )}
 
         {!cargando && !noEncontrada && !error && persona && (
-          <div className="mt-6 space-y-4">
-            {/* 1. Datos de la persona */}
-            <section className="rounded-lg bg-white p-6 shadow-md">
-              <h2 className="text-xl font-semibold text-gray-800">{persona.nombreCompleto}</h2>
-              <dl className="mt-3 space-y-1 text-sm">
-                <div className="flex gap-2">
-                  <dt className="text-gray-500">Tipo:</dt>
-                  <dd className="text-gray-800">
-                    {ETIQUETAS_TIPO[persona.PersonType] ?? persona.PersonType}
-                  </dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="text-gray-500">Identificador:</dt>
-                  <dd className="text-gray-800">{persona.BusinessEntityID}</dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="text-gray-500">Acepta promociones por correo:</dt>
-                  <dd className="text-gray-800">{persona.EmailPromotion > 0 ? 'Sí' : 'No'}</dd>
-                </div>
-              </dl>
-            </section>
+          <div className="space-y-6">
+            {/* Encabezado de perfil */}
+            <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+              <div className="h-28 bg-gradient-to-r from-brand-600 via-brand-500 to-indigo-500" />
+              <div className="px-8 pb-8">
+                <div className="-mt-12 flex flex-wrap items-end justify-between gap-5">
+                  <div className="flex items-end gap-5">
+                    <div className="rounded-full bg-white p-1.5 shadow-md">
+                      <Avatar nombre={persona.nombreCompleto} tamano="lg" />
+                    </div>
+                    <div className="pb-1">
+                      <h2 className="text-2xl font-bold text-slate-800">{persona.nombreCompleto}</h2>
+                      <div className="mt-2 flex items-center gap-2">
+                        <Insignia tipo={persona.PersonType} />
+                      </div>
+                    </div>
+                  </div>
 
-            {/* 2. Correos electrónicos */}
-            <section className="rounded-lg bg-white p-6 shadow-md">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-                Correos electrónicos
-              </h3>
-              {persona.correos.length === 0 ? (
-                <p className="mt-2 text-sm text-gray-500">No tiene correos registrados.</p>
-              ) : (
-                <ul className="mt-2 space-y-1 text-sm text-gray-800">
-                  {persona.correos.map((correo) => (
-                    <li key={correo.EmailAddressID}>{correo.EmailAddress}</li>
-                  ))}
-                </ul>
-              )}
-            </section>
-
-            {/* 3. Teléfonos */}
-            <section className="rounded-lg bg-white p-6 shadow-md">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-                Teléfonos
-              </h3>
-              {persona.telefonos.length === 0 ? (
-                <p className="mt-2 text-sm text-gray-500">No tiene teléfonos registrados.</p>
-              ) : (
-                <ul className="mt-2 space-y-1 text-sm text-gray-800">
-                  {persona.telefonos.map((telefono) => (
-                    <li key={`${telefono.PhoneNumber}-${telefono.PhoneNumberTypeID}`}>
-                      {telefono.PhoneNumber}{' '}
-                      <span className="text-gray-500">({telefono.tipoTelefono})</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-
-            {/* 4. Direcciones */}
-            <section className="rounded-lg bg-white p-6 shadow-md">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-                Direcciones
-              </h3>
-              {persona.direcciones.length === 0 ? (
-                <p className="mt-2 text-sm text-gray-500">No tiene direcciones registradas.</p>
-              ) : (
-                <ul className="mt-2 space-y-3 text-sm">
-                  {persona.direcciones.map((direccion) => (
-                    <li
-                      key={direccion.AddressID}
-                      className="border-b border-gray-100 pb-3 last:border-0 last:pb-0"
+                  <div className="flex gap-3">
+                    <Link
+                      to={`/personas/${id}/editar`}
+                      className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-3 text-base font-semibold text-white shadow-sm hover:bg-brand-700"
                     >
-                      <p className="font-medium text-gray-800">{direccion.tipoDireccion}</p>
-                      <p className="text-gray-600">
-                        {direccion.AddressLine1}
-                        {direccion.AddressLine2 ? `, ${direccion.AddressLine2}` : ''}
-                      </p>
-                      <p className="text-gray-600">
-                        {direccion.City}, {direccion.estadoProvincia}, {direccion.pais}
-                      </p>
-                      <p className="text-gray-600">{direccion.PostalCode}</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
+                      <Pencil className="h-5 w-5" />
+                      Editar
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={manejarEliminar}
+                      disabled={eliminando}
+                      className="inline-flex items-center gap-2 rounded-xl bg-rose-50 px-5 py-3 text-base font-semibold text-rose-600 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                      {eliminando ? 'Eliminando...' : 'Eliminar'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-7 grid grid-cols-1 gap-4 border-t border-slate-100 pt-6 sm:grid-cols-2">
+                  <div className="flex items-center gap-3 text-base">
+                    <IdCard className="h-5 w-5 text-slate-400" />
+                    <span className="text-slate-500">Identificador:</span>
+                    <span className="font-medium text-slate-800">{persona.BusinessEntityID}</span>
+                  </div>
+                  <div className="flex items-center gap-3 text-base">
+                    <BellRing className="h-5 w-5 text-slate-400" />
+                    <span className="text-slate-500">Promociones por correo:</span>
+                    <span
+                      className={`font-medium ${persona.EmailPromotion > 0 ? 'text-emerald-600' : 'text-slate-500'}`}
+                    >
+                      {persona.EmailPromotion > 0 ? 'Sí' : 'No'}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </section>
+
+            <SeccionDetalle
+              icono={Mail}
+              titulo="Correos electrónicos"
+              cantidad={persona.correos.length}
+              mensajeVacio="No tiene correos registrados."
+            >
+              <ul className="space-y-2.5">
+                {persona.correos.map((correo) => (
+                  <li
+                    key={correo.EmailAddressID}
+                    className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3 text-base text-slate-700"
+                  >
+                    <Mail className="h-5 w-5 text-slate-400" />
+                    {correo.EmailAddress}
+                  </li>
+                ))}
+              </ul>
+            </SeccionDetalle>
+
+            <SeccionDetalle
+              icono={Phone}
+              titulo="Teléfonos"
+              cantidad={persona.telefonos.length}
+              mensajeVacio="No tiene teléfonos registrados."
+            >
+              <ul className="space-y-2.5">
+                {persona.telefonos.map((telefono) => (
+                  <li
+                    key={`${telefono.PhoneNumber}-${telefono.PhoneNumberTypeID}`}
+                    className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3 text-base text-slate-700"
+                  >
+                    <Phone className="h-5 w-5 text-slate-400" />
+                    {telefono.PhoneNumber}
+                    <span className="ml-auto rounded-full bg-white px-2.5 py-1 text-sm font-medium text-slate-500 ring-1 ring-inset ring-slate-200">
+                      {telefono.tipoTelefono}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </SeccionDetalle>
+
+            <SeccionDetalle
+              icono={MapPin}
+              titulo="Direcciones"
+              cantidad={persona.direcciones.length}
+              mensajeVacio="No tiene direcciones registradas."
+            >
+              <ul className="space-y-4">
+                {persona.direcciones.map((direccion) => (
+                  <li key={direccion.AddressID} className="rounded-xl bg-slate-50 p-5">
+                    <div className="mb-2 flex items-center gap-2.5">
+                      <MapPin className="h-5 w-5 text-slate-400" />
+                      <span className="text-base font-semibold text-slate-800">{direccion.tipoDireccion}</span>
+                    </div>
+                    <p className="pl-7 text-base text-slate-600">
+                      {direccion.AddressLine1}
+                      {direccion.AddressLine2 ? `, ${direccion.AddressLine2}` : ''}
+                    </p>
+                    <p className="pl-7 text-base text-slate-600">
+                      {direccion.City}, {direccion.estadoProvincia}, {direccion.pais}
+                    </p>
+                    <p className="pl-7 text-base text-slate-600">{direccion.PostalCode}</p>
+                  </li>
+                ))}
+              </ul>
+            </SeccionDetalle>
           </div>
         )}
       </main>
